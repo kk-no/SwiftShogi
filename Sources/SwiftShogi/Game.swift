@@ -117,7 +117,7 @@ public extension Game {
     /// Validates `move`.
     func validate(_ move: Move) throws {
         try validateSource(move.source, piece: move.piece)
-        try validateDestination(move.destination)
+        try validateDestination(move.source, move.destination)
         if move.shouldPromote {
             try validatePromotion(
                 source: move.source,
@@ -130,6 +130,7 @@ public extension Game {
             destination: move.destination,
             piece: move.piece
         )
+        try validateNifu(for: move)
     }
 
     func isValid(for move: Move) -> Bool {
@@ -206,7 +207,6 @@ public extension Game {
 }
 
 private extension Game {
-
     mutating func capturePieceIfNeeded(from destination: Move.Destination) {
         guard case let .board(square) = destination, var piece = board[square] else { return }
 
@@ -254,14 +254,16 @@ private extension Game {
         }
     }
 
-    func validateDestination(_ destination: Move.Destination) throws {
+    func validateDestination(_ source: Move.Source, _ destination: Move.Destination) throws {
         switch destination {
         case let .board(square):
-            // If a piece at the destination does not exist, no validation is required
-            guard let piece = board[square] else { return }
-
-            guard piece.color != color else {
-                throw MoveValidationError.friendlyPieceAlreadyExists
+            if let piece = board[square] {
+                if piece.color == color {
+                    throw MoveValidationError.friendlyPieceAlreadyExists
+                }
+                if source == .capturedPiece {
+                    throw MoveValidationError.illegalAttack
+                }
             }
         }
     }
