@@ -58,7 +58,7 @@ public extension Piece {
         case .bishop(.normal): return "角"
         case .bishop(.promoted): return "馬"
         case .rook(.normal): return "飛"
-        case .rook(.promoted): return "竜"
+        case .rook(.promoted): return "龍"
         case .king: return "玉"
         }
     }
