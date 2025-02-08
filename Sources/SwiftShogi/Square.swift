@@ -14,15 +14,15 @@ public extension File {
     // The internal board and the actual board are reversed.
     var kifString: String {
         switch self {
-        case .one: return "9"
-        case .two: return "8"
-        case .three: return "7"
-        case .four: return "6"
-        case .five: return "5"
-        case .six: return "4"
-        case .seven: return "3"
-        case .eight: return "2"
-        case .nine: return "1"
+        case .one: return "９"
+        case .two: return "８"
+        case .three: return "７"
+        case .four: return "６"
+        case .five: return "５"
+        case .six: return "４"
+        case .seven: return "３"
+        case .eight: return "２"
+        case .nine: return "１"
         }
     }
 }
