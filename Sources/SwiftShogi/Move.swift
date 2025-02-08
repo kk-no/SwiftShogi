@@ -81,7 +81,7 @@ public extension Move {
 
         switch destination {
         case let .board(square):
-            destinationString = "\(square.file.kifString)\(square.rank.kifString)"
+            destinationString = "\(square.file.kifStringWide)\(square.rank.kifString)"
         }
 
         switch source {
