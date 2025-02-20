@@ -142,6 +142,61 @@ public extension Game {
         }
     }
 
+    /// Returns the move from usi string.
+    func createMove(fromUSI usiMove: String) -> Move? {
+        if usiMove.contains("*") {
+            let components = usiMove.split(separator: "*")
+            guard components.count == 2,
+                  let pieceCharacter = components.first?.first,
+                  let destination = Square(usiString: String(components[1]))
+            else {
+                return nil
+            }
+
+            let kind: Piece.Kind
+            switch pieceCharacter.lowercased() {
+            case "p": kind = .pawn(.normal)
+            case "l": kind = .lance(.normal)
+            case "n": kind = .knight(.normal)
+            case "s": kind = .silver(.normal)
+            case "g": kind = .gold
+            case "b": kind = .bishop(.normal)
+            case "r": kind = .rook(.normal)
+            case "k": kind = .king
+            default: return nil
+            }
+
+            let piece = Piece(kind: kind, color: color)
+            return Move(
+                source: .capturedPiece,
+                destination: .board(destination),
+                piece: piece
+            )
+        }
+
+        guard usiMove.count >= 4 else { return nil }
+
+        let srcFile = String(usiMove.prefix(1))
+        let srcRank = String(usiMove[usiMove.index(usiMove.startIndex, offsetBy: 1)])
+        let destFile = String(usiMove[usiMove.index(usiMove.startIndex, offsetBy: 2)])
+        let destRank = String(usiMove[usiMove.index(usiMove.startIndex, offsetBy: 3)])
+        let promote = usiMove.hasSuffix("+")
+
+        guard let srcSquare = Square(usiFile: srcFile, usiRank: srcRank),
+              let destSquare = Square(usiFile: destFile, usiRank: destRank),
+              let piece = board[srcSquare]
+        else {
+            return nil
+        }
+
+        return Move(
+            source: .board(srcSquare),
+            destination: .board(destSquare),
+            piece: piece,
+            shouldPromote: promote
+        )
+    }
+
     /// Returns the valid moves for the current color.
     func validMoves() -> [Move] {
         (movesFromBoard + movesFromCapturedPieces).filter(isValid)

@@ -100,6 +100,32 @@ public extension Square {
         self = Self.allCases.first { $0.file == file && $0.rank == rank }!
     }
 
+    init?(usiFile: String, usiRank: String) {
+        guard let rankChar = usiRank.first,
+              let rankAscii = rankChar.asciiValue,
+              let rank = Rank(rawValue: Int(rankAscii - 97))
+        else {
+            return nil
+        }
+
+        guard let fileNumber = Int(usiFile),
+              let fileEnum = File(rawValue: 9 - fileNumber)
+        else {
+            return nil
+        }
+
+        self.init(file: fileEnum, rank: rank)
+    }
+
+    init?(usiString: String) {
+        guard usiString.count == 2 else { return nil }
+
+        let file = String(usiString.prefix(1))
+        let rank = String(usiString.suffix(1))
+
+        self.init(usiFile: file, usiRank: rank)
+    }
+
     var file: File { File(rawValue: rawValue / File.allCases.count)! }
     var rank: Rank { Rank(rawValue: rawValue % Rank.allCases.count)! }
     var usiString: String {

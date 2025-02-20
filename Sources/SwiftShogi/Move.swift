@@ -100,3 +100,8 @@ public extension Move {
 extension Move.Source: Equatable {}
 extension Move.Destination: Equatable {}
 extension Move: Equatable {}
+extension Array where Element == Move {
+    func toUSIMoves() -> [String] {
+        map { $0.toUSIMove }
+    }
+}
