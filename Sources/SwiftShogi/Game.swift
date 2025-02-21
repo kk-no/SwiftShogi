@@ -72,8 +72,8 @@ public extension Game {
         reverseMove(move)
     }
 
-    mutating func redo() throws {
-        guard let move = history.redo() else { return }
+    mutating func redo(branch index: Int? = nil) throws {
+        guard let move = history.redo(branch: index) else { return }
 
         performMoveWithoutValidation(move)
     }
