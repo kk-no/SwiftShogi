@@ -107,6 +107,15 @@ public class History {
         return node.children
     }
 
+    /// Switches the current branch to the candidate branch node.
+    public func switchBranch(to candidate: HistoryNode) {
+        guard let parent = candidate.parent else { return }
+        if let index = parent.children.firstIndex(of: candidate) {
+            parent.selectedChildIndex = index
+            current = candidate
+        }
+    }
+
     /// Adds a new move as a branch from the current position.
     /// If there are existing branches, the new move is added as an additional branch.
     public func addMove(_ move: Move) {
