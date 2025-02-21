@@ -1,45 +1,156 @@
+/// Node representing a single move in the game tree.
+/// The root node represents the initial position and has a nil move.
+public class HistoryNode: Identifiable, Equatable, Hashable {
+    /// The move associated with this node (nil for the root).
+    public let move: Move?
+    /// The parent node; nil for the root node.
+    public weak var parent: HistoryNode?
+    /// Child nodes representing subsequent moves.
+    public var children: [HistoryNode] = []
+    /// Selected branch index to record which child was chosen.
+    public var selectedChildIndex: Int?
+
+    /// A unique identifier combining the entire move chain.
+    public var id: String {
+        if let parent = parent {
+            return parent.id + "/" + (move?.toKIFMove ?? "")
+        } else {
+            return move?.toKIFMove ?? ""
+        }
+    }
+
+    public init(move: Move? = nil, parent: HistoryNode? = nil) {
+        self.move = move
+        self.parent = parent
+    }
+
+    public static func == (lhs: HistoryNode, rhs: HistoryNode) -> Bool {
+        return lhs.id == rhs.id && lhs.children == rhs.children
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+        hasher.combine(children.count)
+    }
+}
+
+/// Manages the game history using a tree structure.
 public class History {
-    private var moves: [Move] = []
-    private var currentIndex: Int = -1
+    private let root: HistoryNode = .init() // Initial position (no move)
+    private(set) var current: HistoryNode
 
+    public init() {
+        current = root
+    }
+
+    /// Returns the index of the current move.
+    /// Returns -1 when at the initial position (no move has been made).
+    public var currentIndex: Int {
+        return currentBranchMoves.count - 1
+    }
+
+    /// Returns the all move count at the current branch (nil for the root).
+    public var count: Int {
+        return currentBranchAllMoves.count
+    }
+
+    /// Returns the move at the current node (nil for the root).
     public var currentMove: Move? {
-        guard currentIndex >= 0, currentIndex < moves.count else { return nil }
-        return moves[currentIndex]
+        return current.move
     }
 
-    public var currentMoveIndex: Int {
-        return currentIndex
+    /// Returns the entire history tree as the root node.
+    public var allHistory: HistoryNode {
+        return root
     }
 
-    public var allHistory: [Move] {
+    /// Returns the selected branch from the root to the current move.
+    public var currentBranchMoves: [Move] {
+        var moves: [Move] = []
+        var node: HistoryNode? = current
+        while let n = node, let move = n.move {
+            moves.insert(move, at: 0)
+            node = n.parent
+        }
         return moves
     }
 
-    func addMove(_ move: Move) {
-        if currentIndex < moves.count - 1 {
-            moves = Array(moves.prefix(currentIndex + 1))
+    /// Returns all moves from the root following the selected branch.
+    public var currentBranchAllMoves: [Move] {
+        var branch: [Move] = []
+        var node: HistoryNode = allHistory // start from the root
+        while !node.children.isEmpty {
+            let selectedIndex = node.selectedChildIndex ?? 0
+            guard selectedIndex < node.children.count else { break }
+            let child = node.children[selectedIndex]
+            if let move = child.move {
+                branch.append(move)
+            }
+            node = child
         }
-        moves.append(move)
-        currentIndex += 1
+        return branch
     }
 
-    func undo() -> Move? {
-        guard currentIndex >= -1 else { return nil }
-        let move: Move? = currentIndex >= 0 ? moves[currentIndex] : nil
-        if currentIndex > -1 {
-            currentIndex -= 1
+    /// Returns the nodes available as branches at the specified level.
+    /// Level is 0-based: level 0 corresponds to the root's children (first move).
+    public func branchNodes(at level: Int) -> [HistoryNode] {
+        // Start at the root (initial position)
+        var node = allHistory
+        var currentLevel = 0
+
+        // Traverse along the selected branch until reaching the parent node of the specified level.
+        // (If selectedChildIndex is not set, default to the first child.)
+        while currentLevel < level, let selectedIndex = node.selectedChildIndex, selectedIndex < node.children.count {
+            node = node.children[selectedIndex]
+            currentLevel += 1
         }
-        return move
+        return node.children
     }
 
-    func redo() -> Move? {
-        guard currentIndex < moves.count - 1 else { return nil }
-        currentIndex += 1
-        return moves[currentIndex]
+    /// Adds a new move as a branch from the current position.
+    /// If there are existing branches, the new move is added as an additional branch.
+    public func addMove(_ move: Move) {
+        // Check if a branch with the same move (using toKIFMove for comparison) already exists.
+        if let index = current.children.firstIndex(where: { $0.move?.toKIFMove == move.toKIFMove }) {
+            // Follow the existing branch.
+            current.selectedChildIndex = index
+            current = current.children[index]
+        } else {
+            // Otherwise, create a new branch.
+            let newNode = HistoryNode(move: move, parent: current)
+            current.children.append(newNode)
+            current.selectedChildIndex = current.children.count - 1
+            current = newNode
+        }
     }
 
-    func reset() {
-        moves.removeAll()
-        currentIndex = -1
+    /// Undoes the last move by moving to the parent node.
+    /// Returns the undone move, or nil if already at the root.
+    public func undo() -> Move? {
+        guard let parent = current.parent else { return nil }
+        let undoneMove = current.move
+        current = parent
+        return undoneMove
+    }
+
+    // Redoes a move by selecting a branch from the current node.
+    // If no branch index is provided, it follows the previously selected branch (or defaults to the first branch).
+    public func redo(branch index: Int? = nil) -> Move? {
+        // Ensure there is at least one child (redo candidate).
+        guard !current.children.isEmpty else { return nil }
+        // Use the provided branch index or the parent's stored selectedChildIndex, defaulting to 0.
+        let branchIndex = index ?? current.selectedChildIndex ?? 0
+        guard current.children.indices.contains(branchIndex) else { return nil }
+        // Update the parent's selectedChildIndex and move to that child node.
+        current.selectedChildIndex = branchIndex
+        current = current.children[branchIndex]
+        return current.move
+    }
+
+    /// Resets the history to the initial position.
+    public func reset() {
+        current = root
+        root.children.removeAll()
+        root.selectedChildIndex = nil
     }
 }
