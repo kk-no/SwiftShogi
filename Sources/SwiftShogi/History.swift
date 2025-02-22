@@ -112,7 +112,6 @@ public class History {
         guard let parent = candidate.parent else { return }
         if let index = parent.children.firstIndex(of: candidate) {
             parent.selectedChildIndex = index
-            current = candidate
         }
     }
 
