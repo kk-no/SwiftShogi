@@ -22,6 +22,10 @@ public struct Game {
 }
 
 public extension Game {
+    mutating func setHistory(_ newHistory: History) {
+        history = newHistory
+    }
+
     mutating func perform(_ move: Move) throws {
         try validate(move)
 

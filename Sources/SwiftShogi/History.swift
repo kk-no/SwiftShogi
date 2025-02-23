@@ -91,6 +91,10 @@ public class History {
         return branch
     }
 
+    public func setCurrentNode(_ newNode: HistoryNode) {
+        current = newNode
+    }
+
     /// Returns the nodes available as branches at the specified level.
     /// Level is 0-based: level 0 corresponds to the root's children (first move).
     public func branchNodes(at level: Int) -> [HistoryNode] {
