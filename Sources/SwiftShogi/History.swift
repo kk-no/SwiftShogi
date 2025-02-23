@@ -37,7 +37,7 @@ public class HistoryNode: Identifiable, Equatable, Hashable {
 /// Manages the game history using a tree structure.
 public class History {
     private let root: HistoryNode = .init() // Initial position (no move)
-    private(set) var current: HistoryNode
+    public private(set) var current: HistoryNode
 
     public init() {
         current = root
