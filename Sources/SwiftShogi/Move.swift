@@ -24,6 +24,13 @@ public struct Move {
 }
 
 public extension Move {
+    var destinationSquare: Square? {
+        if case let .board(square) = destination {
+            return square
+        }
+        return nil
+    }
+
     var canPromote: Bool {
         guard !piece.isPromoted, piece.canPromote else { return false }
         switch (source, destination) {

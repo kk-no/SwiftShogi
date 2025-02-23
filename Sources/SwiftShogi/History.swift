@@ -1,3 +1,5 @@
+import SwiftUI
+
 /// Node representing a single move in the game tree.
 /// The root node represents the initial position and has a nil move.
 public class HistoryNode: Identifiable, Equatable, Hashable {
@@ -164,5 +166,34 @@ public class History {
         current = root
         root.children.removeAll()
         root.selectedChildIndex = nil
+    }
+
+    /// Recursively searches the history tree (starting from the root) for a node whose move's KIF string starts with the given move number.
+    public func findNode(withMoveNumber moveNumber: Int) -> HistoryNode? {
+        return findHistoryNode(in: allHistory, withMoveNumber: moveNumber)
+    }
+
+    private func findHistoryNode(in node: HistoryNode, withMoveNumber moveNumber: Int) -> HistoryNode? {
+        if let move = node.move, let num = extractMoveNumber(from: move.toKIFMove), num == moveNumber {
+            return node
+        }
+        for child in node.children {
+            if let found = findHistoryNode(in: child, withMoveNumber: moveNumber) {
+                return found
+            }
+        }
+        return nil
+    }
+
+    private func extractMoveNumber(from kifMove: String) -> Int? {
+        let pattern = "^(\\d{1,3})"
+        let regex = try! NSRegularExpression(pattern: pattern)
+        let nsStr = kifMove as NSString
+        let range = NSRange(location: 0, length: nsStr.length)
+        if let match = regex.firstMatch(in: kifMove, range: range) {
+            let numStr = nsStr.substring(with: match.range(at: 1))
+            return Int(numStr)
+        }
+        return nil
     }
 }
