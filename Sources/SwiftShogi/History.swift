@@ -116,11 +116,16 @@ public class History {
         return node.children
     }
 
-    /// Switches the current branch to the candidate branch node.
+    /// Switches the branch selection so that the path from the root follows the candidate node.
+    /// It does so by updating all parent nodes' selectedChildIndex along the candidate's path.
     public func switchBranch(to candidate: HistoryNode) {
-        guard let parent = candidate.parent else { return }
-        if let index = parent.children.firstIndex(of: candidate) {
-            parent.selectedChildIndex = index
+        var node: HistoryNode = candidate
+        // Traverse upward until reaching the root.
+        while let parent = node.parent {
+            if let index = parent.children.firstIndex(of: node) {
+                parent.selectedChildIndex = index
+            }
+            node = parent
         }
     }
 
