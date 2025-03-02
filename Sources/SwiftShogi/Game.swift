@@ -4,7 +4,7 @@ public struct Game {
     public private(set) var board: Board
     public private(set) var color: Color
     public private(set) var capturedPieces: [Piece]
-    public private(set) var history: History = .init()
+    public private(set) var kifTree: KifTree = .init()
 
     public init(board: Board = Board(), color: Color = .black, capturedPieces: [Piece] = []) {
         self.board = board
@@ -43,7 +43,7 @@ public extension Game {
         insert(updatedMove.piece, to: updatedMove.destination, shouldPromote: updatedMove.shouldPromote)
         color.toggle()
 
-        history.addMove(updatedMove)
+        kifTree.addMove(updatedMove)
     }
 
     mutating func performMoveWithoutValidation(_ move: Move) {
@@ -67,13 +67,13 @@ public extension Game {
     }
 
     mutating func undo() throws {
-        guard let move = history.undo() else { return }
+        guard let move = kifTree.undo() else { return }
 
         reverseMove(move)
     }
 
     mutating func redo(branch index: Int? = nil) throws {
-        guard let move = history.redo(branch: index) else { return }
+        guard let move = kifTree.redo(branch: index) else { return }
 
         performMoveWithoutValidation(move)
     }
