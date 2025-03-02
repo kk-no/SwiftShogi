@@ -295,6 +295,8 @@ public class KifParser {
         "+P": "と", "+L": "成香", "+N": "成桂", "+S": "成銀", "+B": "馬", "+R": "龍",
     ]
 
+    public init() {}
+
     // MARK: - Section Types
 
     /// Structure to represent a section in the KIF file
