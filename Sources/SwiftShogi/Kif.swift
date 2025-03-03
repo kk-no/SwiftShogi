@@ -31,6 +31,25 @@ public class KifNode: Identifiable, Equatable, Hashable {
         }
     }
 
+    public var next: KifNode? {
+        guard let selectedIndex = selectedChildIndex,
+              selectedIndex < children.count
+        else {
+            return nil
+        }
+        return children[selectedIndex]
+    }
+
+    public var variations: [KifNode] {
+        guard let selectedIndex = selectedChildIndex else {
+            return children
+        }
+
+        return children.enumerated().compactMap { index, child in
+            index != selectedIndex ? child : nil
+        }
+    }
+
     public static func == (lhs: KifNode, rhs: KifNode) -> Bool {
         return lhs.id == rhs.id && lhs.children == rhs.children
     }
@@ -227,54 +246,43 @@ public class KifTree {
 
     /// Prints debug information about the tree structure
     public func printDebugInfo() {
-        print("\n======= 棋譜デバッグ情報 =======")
-        print("\n----- メインライン -----")
+        print("\n======= [DEBUG] Start =======")
+        print("\n----- Main Line -----")
         var mainLineMoves: [String] = []
         var currentNode = root
-        while let selectedIndex = currentNode.selectedChildIndex, selectedIndex < currentNode.children.count {
-            let next = currentNode.children[selectedIndex]
+
+        while let next = currentNode.next {
             mainLineMoves.append("\(next.moveNumber). \(next.kifMove)")
             currentNode = next
         }
-        print(mainLineMoves.joined(separator: " -> "))
 
-        print("\n----- 棋譜木構造 -----")
+        print(mainLineMoves.joined(separator: " -> "))
+        print("\n----- Kif Tree -----")
+
+        func printStructure(_ node: KifNode, level: Int, isVariation: Bool) {
+            let indent = String(repeating: "  ", count: level)
+
+            if node === root {
+                print("\(indent)◆ Root Node")
+            } else {
+                let nodeType = isVariation ? "● Branch" : "○ Main"
+                let parentInfo = node.parent != nil ?
+                    "(Parent: \(node.parent!.moveNumber)手目 \(node.parent!.kifMove))" : "(Parent: nil)"
+
+                print("\(indent)\(nodeType) \(node.moveNumber)手目: \(node.kifMove) [USI: \(node.usiMove)] \(parentInfo)")
+            }
+            for (index, variation) in node.variations.enumerated() {
+                print("\(indent)  └─ Branch\(index + 1):")
+                printStructure(variation, level: level + 1, isVariation: true)
+            }
+            if let next = node.next {
+                printStructure(next, level: level, isVariation: false)
+            }
+        }
+
         printStructure(root, level: 0, isVariation: false)
 
-        print("\n======= デバッグ情報終了 =======")
-    }
-
-    private func printStructure(_ node: KifNode, level: Int, isVariation: Bool) {
-        let indent = String(repeating: "  ", count: level)
-
-        if node === root {
-            print("\(indent)◆ ルートノード")
-        } else {
-            let nodeType = isVariation ? "● 分岐" : "○ メイン"
-            let parentInfo = node.parent != nil ?
-                "(親: \(node.parent?.moveNumber ?? -1)手目 \(node.parent?.kifMove ?? "なし"))" : "(親: なし)"
-
-            print("\(indent)\(nodeType) \(node.moveNumber)手目: \(node.kifMove) [USI: \(node.usiMove)] \(parentInfo)")
-        }
-
-        // For the main branch, follow the selected child
-        if let selectedIndex = node.selectedChildIndex, selectedIndex < node.children.count, !isVariation {
-            printStructure(node.children[selectedIndex], level: level, isVariation: false)
-
-            // Print other children as variations
-            for (index, child) in node.children.enumerated() {
-                if index != selectedIndex {
-                    print("\(indent)  └─ 分岐\(index + 1):")
-                    printStructure(child, level: level + 2, isVariation: true)
-                }
-            }
-        } else {
-            // For variations, print all children
-            for (index, child) in node.children.enumerated() {
-                print("\(indent)  └─ 分岐\(index + 1):")
-                printStructure(child, level: level + 2, isVariation: true)
-            }
-        }
+        print("\n======= [DEBUG] End =======")
     }
 }
 
