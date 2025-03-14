@@ -78,6 +78,34 @@ public extension Game {
         performMoveWithoutValidation(move)
     }
 
+    /// Jump to a specific move in the current branch
+    mutating func jumpToMove(at index: Int) throws {
+        // Current move index
+        let currentIndex = kifTree.currentIndex
+
+        // Return to initial position if needed
+        if index == -1 {
+            while kifTree.currentIndex >= 0 {
+                try undo()
+            }
+            return
+        }
+
+        // Move backward if target index is before current position
+        if index < currentIndex {
+            for _ in 0 ..< (currentIndex - index) {
+                try undo()
+            }
+        }
+        // Move forward if target index is after current position
+        else if index > currentIndex {
+            for _ in 0 ..< (index - currentIndex) {
+                try redo()
+            }
+        }
+        // Do nothing if already at the target index
+    }
+
     private mutating func reverseMove(_ move: Move) {
         switch move.source {
         case let .board(sourceSquare):

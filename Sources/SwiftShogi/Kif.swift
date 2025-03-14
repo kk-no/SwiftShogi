@@ -70,8 +70,6 @@ public class KifTree {
         current = root
     }
 
-    // MARK: - Navigation Properties
-
     /// Returns the index of the current move.
     /// Returns -1 when at the initial position (no move has been made).
     public var currentIndex: Int {
@@ -115,8 +113,6 @@ public class KifTree {
         return branch
     }
 
-    // MARK: - Navigation Methods
-
     /// Sets the current node
     public func setCurrentNode(_ newNode: KifNode) {
         current = newNode
@@ -144,8 +140,6 @@ public class KifTree {
             node = parent
         }
     }
-
-    // MARK: - Move Management
 
     /// Adds a new move as a branch from the current position.
     public func addMove(_ move: Move?) {
@@ -207,8 +201,6 @@ public class KifTree {
         return nil
     }
 
-    // MARK: - Game Integration Methods
-
     /// Applies the tree to a game, following the main branch
     public func apply(to game: inout Game) {
         applyMainBranch(to: &game)
@@ -239,54 +231,160 @@ public class KifTree {
         }
     }
 
-    /// Applies a variation branch to the game
-    public func applyVariationBranch(to _: inout Game) {}
+    /// Applies variation branches to the game
+    public func applyVariationBranch(to game: inout Game) {
+        // Store the main branch before processing variations
+        let mainBranch = collectMainBranchNodes()
 
-    // MARK: - Debug Methods
+        // Process all variations starting from the root node
+        processAllVariations(at: root, in: &game)
 
-    /// Prints debug information about the tree structure
-    public func printDebugInfo() {
-        print("\n======= [DEBUG] Start =======")
-        print("\n----- Main Line -----")
-        var mainLineMoves: [String] = []
+        // Restore and move to the last move of the main branch
+        restoreMainBranch(mainBranch, game: &game)
+    }
+
+    /// Collect all nodes in the main branch
+    private func collectMainBranchNodes() -> [KifNode] {
+        var nodes: [KifNode] = []
         var currentNode = root
 
-        while let next = currentNode.next {
-            mainLineMoves.append("\(next.moveNumber). \(next.kifMove)")
-            currentNode = next
+        // Follow the selected branch (main branch)
+        while let selectedIndex = currentNode.selectedChildIndex,
+              selectedIndex < currentNode.children.count
+        {
+            let nextNode = currentNode.children[selectedIndex]
+            nodes.append(nextNode)
+            currentNode = nextNode
         }
 
-        print(mainLineMoves.joined(separator: " -> "))
-        print("\n----- Kif Tree -----")
+        return nodes
+    }
 
-        func printStructure(_ node: KifNode, level: Int, isVariation: Bool) {
-            let indent = String(repeating: "  ", count: level)
+    /// Restore the main branch and move to its last move
+    private func restoreMainBranch(_ mainBranch: [KifNode], game: inout Game) {
+        if mainBranch.isEmpty {
+            return
+        }
 
-            if node === root {
-                print("\(indent)◆ Root Node")
+        do {
+            // Return to initial position
+            try game.jumpToMove(at: -1)
+
+            // Follow the main branch by explicitly traversing the saved nodes
+            for node in mainBranch {
+                if let move = game.createMove(fromUSI: node.usiMove) {
+                    try game.perform(move)
+                } else {
+                    print("Failed to create move from USI: \(node.usiMove)")
+                    break
+                }
+            }
+        } catch {
+            print("Failed to restore main branch: \(error)")
+        }
+    }
+
+    /// Process all variations at the specified node and its descendants
+    private func processAllVariations(at node: KifNode, in game: inout Game) {
+        // Process nested branches at this level before continuing
+        if node.children.count > 1 {
+            let mainBranchIndex = node.selectedChildIndex ?? 0
+
+            // Process each variation except the main branch
+            for (index, childNode) in node.children.enumerated() {
+                if index == mainBranchIndex {
+                    continue // Skip the main branch
+                }
+
+                // Apply this variation
+                applyVariation(parentNode: node, variationStartNode: childNode, to: &game)
+            }
+        }
+
+        // Continue down the main branch
+        if let nextNode = node.next {
+            processAllVariations(at: nextNode, in: &game)
+        }
+    }
+
+    /// Apply a specific variation to the game
+    private func applyVariation(parentNode: KifNode, variationStartNode: KifNode, to game: inout Game) {
+        // Save the current state
+        let originalIndex = game.kifTree.currentIndex
+
+        do {
+            // Jump to the parent node of the variation
+            try game.jumpToMove(at: parentNode.moveNumber - 1)
+
+            // Perform the first move of the variation
+            if let move = game.createMove(fromUSI: variationStartNode.usiMove) {
+                try game.perform(move)
+
+                // Perform the remaining moves in the variation sequentially
+                // AND process any branches within this variation path
+                traverseVariationPath(startingFrom: variationStartNode, game: &game)
             } else {
-                let nodeType = isVariation ? "● Branch" : "○ Main"
-                let parentInfo = node.parent != nil ?
-                    "(Parent: \(node.parent!.moveNumber)手目 \(node.parent!.kifMove))" : "(Parent: nil)"
+                print("Failed to create initial variation move from USI: \(variationStartNode.usiMove)")
+            }
 
-                print("\(indent)\(nodeType) \(node.moveNumber)手目: \(node.kifMove) [USI: \(node.usiMove)] \(parentInfo)")
-            }
-            for (index, variation) in node.variations.enumerated() {
-                print("\(indent)  └─ Branch\(index + 1):")
-                printStructure(variation, level: level + 1, isVariation: true)
-            }
-            if let next = node.next {
-                printStructure(next, level: level, isVariation: false)
+            // Restore the original position
+            try game.jumpToMove(at: originalIndex)
+        } catch {
+            print("Failed to apply variation starting at move \(parentNode.moveNumber): \(error)")
+
+            // Restore the original position even if an error occurs
+            do {
+                try game.jumpToMove(at: originalIndex)
+            } catch {
+                print("Failed to restore original position: \(error)")
             }
         }
+    }
 
-        printStructure(root, level: 0, isVariation: false)
+    /// Traverse a variation path, executing moves and finding nested branches
+    private func traverseVariationPath(startingFrom node: KifNode, game: inout Game) {
+        var currentNode = node
 
-        print("\n======= [DEBUG] End =======")
+        // Process this variation path step by step
+        while true {
+            // Check if this node has branches
+            if currentNode.children.count > 1 {
+                let mainBranchIndex = currentNode.selectedChildIndex ?? 0
+
+                // Process each branch at this node
+                for (index, branchNode) in currentNode.children.enumerated() {
+                    if index == mainBranchIndex {
+                        continue // Skip the main branch of this variation
+                    }
+
+                    // Apply this nested branch
+                    applyVariation(parentNode: currentNode, variationStartNode: branchNode, to: &game)
+                }
+            }
+
+            // Move to the next node in this variation
+            if let nextNode = currentNode.next {
+                // Execute the move to advance to the next position
+                if let move = game.createMove(fromUSI: nextNode.usiMove) {
+                    do {
+                        try game.perform(move)
+                    } catch {
+                        print("Failed to perform move in variation: \(nextNode.usiMove)")
+                        break
+                    }
+                } else {
+                    print("Failed to create move from USI: \(nextNode.usiMove)")
+                    break
+                }
+
+                currentNode = nextNode
+            } else {
+                // End of this variation path
+                break
+            }
+        }
     }
 }
-
-// MARK: - KIF Parser
 
 /// Parser for KIF format notation
 public class KifParser {
@@ -304,8 +402,6 @@ public class KifParser {
     ]
 
     public init() {}
-
-    // MARK: - Section Types
 
     /// Structure to represent a section in the KIF file
     public struct KifSection {
@@ -326,8 +422,6 @@ public class KifParser {
         public let sectionIndex: Int
     }
 
-    // MARK: - Format Detection
-
     /// Checks if the provided string is in KIF format
     public func isKIFFormat(_ kifu: String) -> Bool {
         // Check if the text contains the typical KIF header line
@@ -345,8 +439,6 @@ public class KifParser {
         }
         return false
     }
-
-    // MARK: - Parsing
 
     /// Parse KIF format notation into a tree structure
     public func parseKif(kifString: String) -> KifTree {
@@ -369,8 +461,6 @@ public class KifParser {
 
         return kifTree
     }
-
-    // MARK: - Section Processing
 
     /// Extract all sections (main line and variations) from the KIF file
     private func extractSections(from lines: [String]) -> [KifSection] {
@@ -493,8 +583,6 @@ public class KifParser {
 
         return branchInfos
     }
-
-    // MARK: - Tree Building
 
     /// Build the main line of the game
     private func buildMainLine(section: KifSection, kifTree: KifTree) {
@@ -689,8 +777,6 @@ public class KifParser {
 
         return (moveNumber, kifMove)
     }
-
-    // MARK: - Notation Conversion
 
     /// Convert KIF move notation to USI format
     public func kifToUSI(_ kifMove: String) -> String {
