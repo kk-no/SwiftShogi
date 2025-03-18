@@ -412,7 +412,7 @@ public class KakinokiFormatter {
     /// - Returns: 読み取り結果（Errorまたはbool）
     private static func readRegularMove(record: Record, data: String) -> Any {
         // 指し手の正規表現
-        guard let regex = try? NSRegularExpression(pattern: "^ *([0-9]+) +[▲△▼▽]?([１２３４５６７８９][一二三四五六七八九]|同\\u{3000}*)(王|玉|飛|龍|竜|角|馬|金|銀|成銀|全|桂|成桂|圭|香|成香|杏|歩|と)\\u{3000}*(成?)(打|\\([1-9][1-9]\\)) *([^ ].*|$)", options: []),
+        guard let regex = try? NSRegularExpression(pattern: #"^ *([0-9]+) +[▲△▼▽]?([１２３４５６７８９][一二三四五六七八九]|同\s*)(王|玉|飛|龍|竜|角|馬|金|銀|成銀|全|桂|成桂|圭|香|成香|杏|歩|と)\s*(成?)(打|\([1-9][1-9]\))\s*(.*|$)"#, options: []),
               let match = regex.firstMatch(in: data, options: [], range: NSRange(location: 0, length: data.utf16.count))
         else {
             return false
@@ -531,7 +531,7 @@ public class KakinokiFormatter {
     /// - Returns: 読み取り成功ならtrue
     private static func readSpecialMove(record: Record, data: String) -> Bool {
         // 特殊な指し手の正規表現
-        guard let regex = try? NSRegularExpression(pattern: "^ *([0-9]+) +([^ \\u{3000}]+) *([^ ].*|$)", options: []),
+        guard let regex = try? NSRegularExpression(pattern: #"^ *([0-9]+) +(\S+) *\s*(.*|$)"#, options: []),
               let match = regex.firstMatch(in: data, options: [], range: NSRange(location: 0, length: data.utf16.count))
         else {
             return false
