@@ -1,7 +1,7 @@
 import Foundation
 
 /// 持ち駒(読み取り専用)プロトコル
-public protocol ImmutableHand {
+public protocol ImmutableHand: Sequence where Element == (type: PieceType, count: Int) {
     /// 持ち駒の枚数を取得します
     /// - Parameter pieceType: 駒の種類
     /// - Returns: 枚数
@@ -29,6 +29,9 @@ public protocol ImmutableHand {
 /// 持ち駒
 public class Hand: ImmutableHand {
     private var pieces: [PieceType: Int]
+
+    // Sequenceプロトコルの要件を満たすための型エイリアス
+    public typealias Element = (type: PieceType, count: Int)
 
     /// 初期化
     public init() {
@@ -135,6 +138,24 @@ public class Hand: ImmutableHand {
     public func copyFrom(_ hand: Hand) {
         for pieceType in handPieceTypes {
             set(pieceType: pieceType, count: hand.count(pieceType: pieceType))
+        }
+    }
+
+    /// Sequenceプロトコルに対応するためのmakeIteratorメソッド
+    public func makeIterator() -> AnyIterator<Element> {
+        // 持ち駒をゼロ値でないのものだけフィルタリングして返す
+        let nonZeroElements = handPieceTypes
+            .filter { self.count(pieceType: $0) > 0 }
+            .map { (type: $0, count: self.count(pieceType: $0)) }
+
+        // コレクションタイプ（例えば配列）として扱いたい場合は、
+        // 戻り値をハンドラー経由で配列に格納
+        var index = 0
+        return AnyIterator {
+            guard index < nonZeroElements.count else { return nil }
+            let element = nonZeroElements[index]
+            index += 1
+            return element
         }
     }
 

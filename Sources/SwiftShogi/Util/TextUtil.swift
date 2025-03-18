@@ -121,4 +121,148 @@ public enum TextUtil {
         default: return specialMoveType
         }
     }
+
+    /// 「上」や「引」など指し手の移動方向を修飾する文字列を返します
+    /// - Parameters:
+    ///   - move: 対象の指し手
+    ///   - position: 指し手の直前の局面
+    /// - Returns: 移動方向を表す修飾語
+    public static func getDirectionModifier(move: Move, position: Position) -> String {
+        let piece = Piece(color: move.color, type: move.pieceType)
+
+        // 同じマス目へ移動可能な同種の駒を列挙
+        var others = position.listAttackersByPiece(to: move.to, piece: piece)
+
+        // 移動元の駒は除外
+        if move.isFromBoard, let fromSquare = move.from.leftValue {
+            others = others.filter { $0 != fromSquare }
+        }
+
+        // 移動可能な同じ駒がある場合に移動元を区別する文字を付ける
+        if move.isFromBoard, let fromSquare = move.from.leftValue {
+            var ret = ""
+
+            // この指し手の移動方向
+            guard let myDir = fromSquare.directionTo(move.to) else {
+                return ""
+            }
+
+            // 後手の場合は逆方向になる
+            var effectiveDir = myDir
+            if move.color == .white {
+                effectiveDir = myDir.reversed
+            }
+
+            let myVDir = effectiveDir.verticalDirection
+            let myHDir = effectiveDir.horizontalDirection
+
+            // 他の駒の移動方向
+            let otherDirs = others.compactMap { square -> Direction? in
+                guard let dir = square.directionTo(move.to) else {
+                    return nil
+                }
+
+                return move.color == .white ? dir.reversed : dir
+            }
+
+            // 水平方向がこの指し手と同じものを列挙して、その垂直方向を保持
+            let vDirections = otherDirs
+                .filter { $0.horizontalDirection == myHDir }
+                .map { $0.verticalDirection }
+
+            // 垂直方向がこの指し手と同じものを列挙して、その水平方向を保持
+            let hDirections = otherDirs
+                .filter { $0.verticalDirection == myVDir }
+                .map { $0.horizontalDirection }
+
+            // 水平方向で区別すべき駒がある場合
+            var noVertical = false
+            if !hDirections.isEmpty {
+                if move.pieceType == .horse || move.pieceType == .dragon {
+                    // 竜や馬の場合は2枚しかないので「直」は使わない
+                    if myHDir == .left || (myHDir == .none && hDirections[0] == .right) {
+                        ret += "右"
+                    } else if myHDir == .right || (myHDir == .none && hDirections[0] == .left) {
+                        ret += "左"
+                    }
+                } else {
+                    switch myHDir {
+                    case .left:
+                        ret += "右"
+                    case .none:
+                        ret += "直"
+                        // 後ろへ3方向移動できてなおかつ3枚以上ある駒は存在しないため「直」と垂直方向の区別は同時に使用しない
+                        noVertical = true
+                    case .right:
+                        ret += "左"
+                    }
+                }
+            }
+
+            // 垂直方向で区別すべき駒がある場合
+            if !noVertical && (!vDirections.isEmpty || (hDirections.isEmpty && !others.isEmpty)) {
+                switch myVDir {
+                case .down:
+                    ret += "引"
+                case .none:
+                    ret += "寄"
+                case .up:
+                    ret += "上"
+                }
+            }
+
+            return ret
+        } else if !others.isEmpty {
+            // 盤上に移動可能な同じ駒がある場合は、駒台から打つことを明示する
+            return "打"
+        }
+
+        return ""
+    }
+
+    /// 指し手を表す文字列を返します
+    /// - Parameters:
+    ///   - position: 指し手の直前の局面
+    ///   - move: 対象の指し手
+    ///   - options: オプション（lastMove: 直前の指し手、compatible: Shift_JISで文字化けしない記号を使用するか）
+    /// - Returns: 指し手を表す文字列
+    public static func formatMove(position: Position, move: Move, options: [String: Any]? = nil) -> String {
+        var ret = ""
+
+        // 手番を表す記号を付与する
+        let compatible = options?["compatible"] as? Bool ?? false
+        switch move.color {
+        case .black:
+            ret += compatible ? "▲" : "☗"
+        case .white:
+            ret += compatible ? "△" : "☖"
+        }
+
+        // 移動先の筋・段を付与する
+        if let lastMove = options?["lastMove"] as? Move, lastMove.to == move.to {
+            ret += "同　"
+        } else {
+            ret += fileToMultiByteChar(move.to.file)
+            ret += rankToKanji(move.to.rank)
+        }
+
+        ret += pieceTypeToStringForMove(move.pieceType)
+        ret += getDirectionModifier(move: move, position: position)
+
+        if move.isFromBoard {
+            // 「成」または「不成」を付ける
+            if move.promote {
+                ret += "成"
+            } else if move.isFromBoard,
+                      let fromSquare = move.from.leftValue,
+                      let piece = position.board.at(fromSquare),
+                      piece.isPromotable,
+                      isPromotableRank(color: move.color, rank: fromSquare.rank) || isPromotableRank(color: move.color, rank: move.to.rank)
+            {
+                ret += "不成"
+            }
+        }
+
+        return ret
+    }
 }
