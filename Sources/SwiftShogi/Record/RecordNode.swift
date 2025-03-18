@@ -1,7 +1,7 @@
 import Foundation
 
 /// 棋譜を構成するノード(読み取り専用)
-public protocol ImmutableNode {
+public protocol ImmutableNode: AnyObject {
     /// 現在の手数（ply）
     var ply: Int { get }
 
