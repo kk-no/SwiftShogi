@@ -671,7 +671,10 @@ public class Position: ImmutablePosition {
 
         // 盤上の駒を動かす場合
         if case let .left(square) = move.from {
-            let target = _board.at(square)!
+            // 移動元に駒がない場合は失敗
+            guard let target = _board.at(square) else {
+                return false
+            }
             let captured = _board.at(move.to)
 
             _board.remove(square: square)
@@ -819,7 +822,9 @@ public class Position: ImmutablePosition {
 
             switch moveInfo.from {
             case let .left(fromSquare):
-                let piece = _board.remove(square: fromSquare)!
+                guard let piece = _board.remove(square: fromSquare) else {
+                    return false
+                }
 
                 switch moveInfo.to {
                 case let .left(toSquare):

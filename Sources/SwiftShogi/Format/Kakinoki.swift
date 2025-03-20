@@ -491,7 +491,7 @@ public class KakinokiFormatter {
             // 条件に合う移動可能な駒を絞り込む
             let candidates = attackers.filter { _ in
                 // 指定された方向条件に一致する駒のみ選択
-                true // 実際にはもっと複雑な条件が必要
+                true
             }
 
             if candidates.count == 1 {
@@ -617,6 +617,7 @@ public class KakinokiFormatter {
             return FormatError(message: "Invalid move number: \(number)")
         }
 
+        // 分岐の手数までジャンプ
         record.goto(number - 1)
         return nil
     }

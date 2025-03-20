@@ -390,6 +390,8 @@ public class Record: ImmutableRecord {
         return false
     }
 
+    /// 1手前に戻ります
+    /// - Returns: 戻れたかどうか
     @discardableResult
     private func _goBack() -> Bool {
         if let prev = _current.prevNode {
@@ -798,7 +800,7 @@ public class Record: ImmutableRecord {
         }
     }
 
-    /// 全てのノードを訪問します（内部実装）
+    /// 全てのノードを訪問します
     private func _forEach(_ handler: (ImmutableNode, ImmutablePosition) -> Void) {
         let pos = _initialPosition.clone()
         var stack: [(NodeImpl, Bool)] = [(_first, false)] // (ノード, 処理済みか)
