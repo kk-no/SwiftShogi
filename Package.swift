@@ -11,13 +11,5 @@ let package = Package(
     ],
     targets: [
         .target(name: "SwiftShogi"),
-        .testTarget(
-            name: "SwiftShogiTests",
-            dependencies: ["SwiftShogi"]
-        ),
-        .testTarget(
-            name: "PerformanceTests",
-            dependencies: ["SwiftShogi"]
-        ),
     ]
 )
