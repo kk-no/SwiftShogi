@@ -657,6 +657,73 @@ public class Position: ImmutablePosition {
         return true
     }
 
+    // Position.swiftに追加
+
+    /// 指定した指し手が成れるかどうかを判定します
+    /// - Parameter move: 指し手
+    /// - Returns: 成れる場合はtrue
+    public func canPromote(_ move: Move) -> Bool {
+        // 移動元が盤上の駒でない場合は成れない
+        guard move.isFromBoard, let fromSquare = move.from.leftValue else {
+            return false
+        }
+
+        // 駒の種類を取得
+        guard let piece = board.at(fromSquare) else {
+            return false
+        }
+
+        // 成れない駒の場合はfalse
+        if !piece.isPromotable {
+            return false
+        }
+
+        // 敵陣（成れる段）に入る場合または敵陣から出る場合に成れる
+        return isPromotableRank(color: move.color, rank: fromSquare.rank) ||
+            isPromotableRank(color: move.color, rank: move.to.rank)
+    }
+
+    /// 指定した指し手が必ず成らなければならないかを判定します
+    /// - Parameter move: 指し手
+    /// - Returns: 必ず成らなければならない場合はtrue
+    public func mustPromote(_ move: Move) -> Bool {
+        // 移動元が盤上の駒でない場合は判定不要
+        guard move.isFromBoard, let fromSquare = move.from.leftValue else {
+            return false
+        }
+
+        // 駒の種類を取得
+        guard let piece = board.at(fromSquare) else {
+            return false
+        }
+
+        // 成れない駒なら判定不要
+        if !piece.isPromotable {
+            return false
+        }
+
+        // 歩や香車が1段目（後手なら9段目）に進む場合
+        if move.color == .black {
+            switch piece.type {
+            case .pawn, .lance:
+                return move.to.rank == 1
+            case .knight:
+                return move.to.rank <= 2
+            default:
+                return false
+            }
+        } else { // 後手の場合
+            switch piece.type {
+            case .pawn, .lance:
+                return move.to.rank == 9
+            case .knight:
+                return move.to.rank >= 8
+            default:
+                return false
+            }
+        }
+    }
+
     /// 指定した指し手で駒を動かします
     /// - Parameters:
     ///   - move: 指し手
