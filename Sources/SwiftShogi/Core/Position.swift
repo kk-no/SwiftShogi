@@ -159,6 +159,16 @@ public protocol ImmutablePosition {
     /// - Returns: 合法手ならtrue
     func isValidMove(_ move: Move) -> Bool
 
+    /// 指定した指し手が成れるかどうかを判定します
+    /// - Parameter move: 指し手
+    /// - Returns: 成れる場合はtrue
+    func canPromote(_ move: Move) -> Bool
+
+    /// 指定した指し手が必ず成らなければならないかを判定します
+    /// - Parameter move: 指し手
+    /// - Returns: 必ず成らなければならない場合はtrue
+    func mustPromote(_ move: Move) -> Bool
+
     /// 有効な編集作業かどうかを判定します
     /// - Parameters:
     ///   - from: 移動元のマスまたは持ち駒
@@ -656,8 +666,6 @@ public class Position: ImmutablePosition {
 
         return true
     }
-
-    // Position.swiftに追加
 
     /// 指定した指し手が成れるかどうかを判定します
     /// - Parameter move: 指し手
