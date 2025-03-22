@@ -1139,76 +1139,144 @@ public class KakinokiFormatter {
             }
         }
 
-        // メタデータの出力
-        ret += formatMetadata(record.metadata, options: options)
-
         // 局面情報の出力
         ret += formatPosition(record.initialPosition, options: options)
 
         // ヘッダー行の出力
         ret += "手数----指手---------消費時間--" + returnCode
 
-        // 指し手の出力
-        // swiftformat:disable:next preferForLoop
-        record.forEach { node, _ in
-            if node.ply != 0 {
-                if !node.isFirstBranch {
-                    ret += returnCode
-                    ret += "変化：\(node.ply)手" + returnCode
-                }
+        // メイン手順のノードを正しい順序で取得
+        var mainLineNodes: [ImmutableNode] = []
+        var currentNode: ImmutableNode? = record.first
 
-                // 手数の出力
-                ret += String(format: "%4d ", node.ply)
+        while currentNode != nil {
+            if currentNode!.ply > 0 {
+                mainLineNodes.append(currentNode!)
+            }
 
-                // 指し手の出力
-                if let move = node.move as? Move {
-                    let prev = (node.prev?.move as? Move)
-                    ret += formatKIFMove(move, options: ["prev": prev as Any, "padding": true])
-                } else if let specialMove = node.move as? SpecialMove {
-                    let name: String
-                    if let type = SpecialMoveType(rawValue: specialMove.name) {
-                        name = specialMoveToDisplayStringMap[type] ?? specialMove.name
-                    } else {
-                        name = specialMove.name
+            // 次のアクティブノードを探す
+            var nextNode = currentNode!.next
+            while nextNode != nil && !nextNode!.activeBranch {
+                nextNode = nextNode!.branch
+            }
+
+            currentNode = nextNode
+        }
+
+        // メイン手順を出力
+        for node in mainLineNodes {
+            outputNode(node, &ret, options)
+        }
+
+        // 処理済みの分岐を追跡するセット
+        var processedBranches = Set<Int>()
+
+        // 棋譜の分岐構造解析と出力のための再帰関数
+        func processBranches(mainNodes: [ImmutableNode]) {
+            // メイン手順から手数の大きい順に分岐を探す
+            let sortedMainNodes = mainNodes.sorted { $0.ply > $1.ply }
+
+            for mainNode in sortedMainNodes {
+                if mainNode.hasBranch {
+                    // このメインノードから派生する分岐を収集
+                    var branchNode = mainNode.branch
+
+                    while branchNode != nil {
+                        // ノードのオブジェクトIDを使用して一意に識別
+                        let branchNodeId = ObjectIdentifier(branchNode as AnyObject).hashValue
+
+                        // 既に処理済みの分岐はスキップ
+                        if !processedBranches.contains(branchNodeId) {
+                            // 分岐を処理済みとしてマーク
+                            processedBranches.insert(branchNodeId)
+
+                            // 分岐の開始
+                            ret += returnCode + "変化：\(mainNode.ply)手" + returnCode
+
+                            // 分岐手順を収集
+                            var branchPath: [ImmutableNode] = []
+                            var currentBranchNode: ImmutableNode? = branchNode
+
+                            while currentBranchNode != nil {
+                                branchPath.append(currentBranchNode!)
+                                currentBranchNode = currentBranchNode!.next
+                            }
+
+                            // 分岐手順を出力
+                            for node in branchPath {
+                                outputNode(node, &ret, options)
+                            }
+
+                            // この分岐内の分岐を再帰的に処理
+                            processBranches(mainNodes: branchPath)
+                        }
+
+                        // 次の同手数分岐へ
+                        branchNode = branchNode!.branch
                     }
-
-                    // パディングを適用
-                    let padding = max(12 - name.count * 2, 0)
-                    ret += name + String(repeating: " ", count: padding)
                 }
-
-                // 時間情報の出力
-                let elapsed = TimeUtil.millisecondsToMSS(node.elapsedMs)
-                let totalElapsed = TimeUtil.millisecondsToHHMMSS(node.totalElapsedMs)
-                ret += " (\(elapsed)/\(totalElapsed))"
-
-                // 分岐マークの出力
-                if node.hasBranch {
-                    ret += "+"
-                }
-
-                ret += returnCode
-            }
-
-            // コメントの出力
-            if !node.comment.isEmpty {
-                var comment = node.comment
-                if comment.hasSuffix("\n") {
-                    comment = String(comment.dropLast())
-                }
-
-                for line in comment.split(separator: "\n") {
-                    ret += "*\(line)\(returnCode)"
-                }
-            }
-
-            // しおりの出力
-            if !node.bookmark.isEmpty {
-                ret += "&\(node.bookmark)\(returnCode)"
             }
         }
 
+        // 分岐処理を開始
+        processBranches(mainNodes: mainLineNodes)
+
         return ret
+    }
+
+    /// ノードを出力する
+    private static func outputNode(_ node: ImmutableNode, _ output: inout String, _ options: KIFExportOptions) {
+        let returnCode = options.returnCode
+
+        // 手数の出力
+        output += String(format: "%4d ", node.ply)
+
+        // 指し手の出力
+        if let move = node.move as? Move {
+            let prev = (node.prev?.move as? Move)
+            output += formatKIFMove(move, options: ["prev": prev as Any, "padding": true])
+        } else if let specialMove = node.move as? SpecialMove {
+            let name: String
+            if let type = SpecialMoveType(rawValue: specialMove.name) {
+                name = specialMoveToDisplayStringMap[type] ?? specialMove.name
+            } else {
+                name = specialMove.name
+            }
+
+            // パディングを適用
+            let padding = max(12 - name.count * 2, 0)
+            output += name + String(repeating: " ", count: padding)
+        }
+
+        // 時間情報の出力
+        let elapsed = TimeUtil.millisecondsToMSS(node.elapsedMs)
+        let totalElapsed = TimeUtil.millisecondsToHHMMSS(node.totalElapsedMs)
+        output += " (\(elapsed)/\(totalElapsed))"
+
+        // 分岐マークの出力
+        // ノードに分岐がある場合のみ「+」を出力する
+        if node.branch != nil {
+            output += "+"
+        }
+
+        output += returnCode
+
+        // コメントの出力
+        if !node.comment.isEmpty {
+            var comment = node.comment
+            if comment.hasSuffix("\n") {
+                comment = String(comment.dropLast())
+            }
+
+            for line in comment.split(separator: "\n") {
+                output += "*\(line)\(returnCode)"
+            }
+        }
+
+        // しおりの出力
+        if !node.bookmark.isEmpty {
+            output += "&\(node.bookmark)\(returnCode)"
+        }
     }
 
     /// KI2形式の文字列を出力します
