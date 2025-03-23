@@ -76,6 +76,12 @@ public protocol ImmutableRecord {
 
     /// イベントを監視します
     func on(event: String, handler: @escaping () -> Void)
+
+    /// アクティブな経路上で指定した手数まで移動します
+    func goto(_ ply: Int)
+
+    /// 全ての分岐選択を初期化して最初のノードをアクティブにします
+    func resetAllBranchSelection()
 }
 
 // Sequence protocol support for Record

@@ -1132,6 +1132,10 @@ public class KakinokiFormatter {
         var ret = ""
         let returnCode = options.returnCode
 
+        // branchIndex を初期化して全ての分岐が処理できるようにする
+        record.goto(0)
+        record.resetAllBranchSelection()
+
         // ヘッダーコメントの出力
         if let comment = options.comment {
             for line in comment.split(separator: "\n") {
