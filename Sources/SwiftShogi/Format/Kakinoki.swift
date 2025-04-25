@@ -682,7 +682,9 @@ public class KakinokiFormatter {
         var preMoveBookmark = ""
         var isMoveSection = false
 
-        let lines = data.split(separator: "\n").map { String($0) }
+        let normalizedData = data.replacingOccurrences(of: "\r\n", with: "\n")
+            .replacingOccurrences(of: "\r", with: "\n")
+        let lines = normalizedData.split(separator: "\n").map { String($0) }
 
         // 各行を解析
         for line in lines {
