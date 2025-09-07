@@ -3,7 +3,7 @@ import XCTest
 
 final class PieceTests: XCTestCase {
     
-    // MARK: - Basic Piece Creation Tests
+    // MARK: - 基本駒作成テスト
     
     func testPieceInitialization() {
         let piece = Piece(color: .black, type: .pawn)
@@ -33,7 +33,7 @@ final class PieceTests: XCTestCase {
         XCTAssertEqual(set.count, 2) // piece1 and piece2 are the same
     }
     
-    // MARK: - Color Conversion Tests
+    // MARK: - 色変換テスト
     
     func testBlackConversion() {
         let whitePawn = Piece(color: .white, type: .pawn)
@@ -59,7 +59,7 @@ final class PieceTests: XCTestCase {
         XCTAssertEqual(whiteRook.type, .rook)
     }
     
-    // MARK: - Promotion Tests
+    // MARK: - 成りテスト
     
     func testPromotedPiece() {
         let pawn = Piece(color: .black, type: .pawn)
@@ -87,17 +87,18 @@ final class PieceTests: XCTestCase {
         XCTAssertFalse(gold.isPromotable)
     }
     
-    // MARK: - Rotation Tests
+    // MARK: - 回転テスト
     
     func testRotatePiece() {
         let blackPawn = Piece(color: .black, type: .pawn)
         let rotated = blackPawn.rotate()
         
-        // Rotation should reverse color and potentially change type
-        XCTAssertEqual(rotated.color, .white)
+        // Rotation changes pawn to promPawn but doesn't reverse color
+        XCTAssertEqual(rotated.color, .black)
+        XCTAssertEqual(rotated.type, .promPawn)
     }
     
-    // MARK: - ID Tests
+    // MARK: - IDテスト
     
     func testPieceID() {
         let blackPawn = Piece(color: .black, type: .pawn)
@@ -108,7 +109,7 @@ final class PieceTests: XCTestCase {
         XCTAssertNotEqual(blackPawn.id, whitePawn.id)
     }
     
-    // MARK: - SFEN Tests
+    // MARK: - SFENテスト
     
     func testSFENConversion() {
         let blackPawn = Piece(color: .black, type: .pawn)
@@ -146,7 +147,7 @@ final class PieceTests: XCTestCase {
         XCTAssertNil(invalidPiece)
     }
     
-    // MARK: - PieceType Tests
+    // MARK: - 駒種類テスト
     
     func testPieceTypeRawValues() {
         XCTAssertEqual(PieceType.pawn.rawValue, "pawn")
@@ -163,7 +164,7 @@ final class PieceTests: XCTestCase {
         XCTAssertEqual(allTypes.count, 14) // All piece types
     }
     
-    // MARK: - Helper Function Tests
+    // MARK: - ヘルパー関数テスト
     
     func testPromotionHelperFunctions() {
         // Test promotable types

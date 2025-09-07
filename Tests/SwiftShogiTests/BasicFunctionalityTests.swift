@@ -3,7 +3,7 @@ import XCTest
 
 final class BasicFunctionalityTests: XCTestCase {
     
-    // MARK: - Basic Piece Tests
+    // MARK: - 基本駒テスト
     
     func testPieceCreation() {
         let blackPawn = Piece(color: .black, type: .pawn)
@@ -26,7 +26,7 @@ final class BasicFunctionalityTests: XCTestCase {
         XCTAssertTrue(pawn.isPromotable)
     }
     
-    // MARK: - Basic Square Tests
+    // MARK: - 基本マス目テスト
     
     func testSquareCreation() {
         let square = Square(file: 5, rank: 5)
@@ -40,14 +40,14 @@ final class BasicFunctionalityTests: XCTestCase {
         XCTAssertEqual(square.usi, "7f")
     }
     
-    // MARK: - Basic Color Tests
+    // MARK: - 基本色テスト
     
     func testColorReversal() {
         XCTAssertEqual(Color.black.reversed(), .white)
         XCTAssertEqual(Color.white.reversed(), .black)
     }
     
-    // MARK: - Basic Direction Tests
+    // MARK: - 基本方向テスト
     
     func testDirectionDeltas() {
         XCTAssertEqual(Direction.up.delta.x, 0)
@@ -57,54 +57,54 @@ final class BasicFunctionalityTests: XCTestCase {
         XCTAssertEqual(Direction.down.delta.y, 1)
     }
     
-    // MARK: - Basic Board Tests
+    // MARK: - 基本盤面テスト
     
     func testBoardOperations() {
         let board = Board()
         let square = Square(file: 5, rank: 5)
         let piece = Piece(color: .black, type: .king)
         
-        // Test setting and getting
+        // 駒の設定と取得テスト
         board.set(square: square, piece: piece)
         XCTAssertEqual(board.at(square), piece)
         
-        // Test removal
+        // 駒の除去テスト
         let removedPiece = board.remove(square: square)
         XCTAssertEqual(removedPiece, piece)
         XCTAssertNil(board.at(square))
         
-        // Test clearing
+        // 盤面クリアテスト
         board.set(square: square, piece: piece)
         board.clear()
         XCTAssertNil(board.at(square))
     }
     
-    // MARK: - Basic Hand Tests
+    // MARK: - 基本持ち駒テスト
     
     func testHandOperations() {
         let hand = Hand()
         
-        // Test setting and getting counts
+        // 枚数の設定と取得テスト
         hand.set(pieceType: .pawn, count: 5)
         XCTAssertEqual(hand.count(pieceType: .pawn), 5)
         
-        // Test adding
+        // 駒の追加テスト
         hand.add(pieceType: .pawn, count: 2)
         XCTAssertEqual(hand.count(pieceType: .pawn), 7)
         
-        // Test reducing
+        // 駒の減算テスト
         hand.reduce(pieceType: .pawn, count: 3)
         XCTAssertEqual(hand.count(pieceType: .pawn), 4)
     }
     
-    // MARK: - Format Detection Tests
+    // MARK: - フォーマット検出テスト
     
     func testFormatDetection() {
-        // Test SFEN detection
+        // SFEN検出テスト
         let sfenString = "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1"
         XCTAssertEqual(FormatDetector.detectRecordFormat(sfenString), .SFEN)
         
-        // Test USI detection
+        // USI検出テスト
         let usiString = "position startpos moves 7g7f 3c3d"
         XCTAssertEqual(FormatDetector.detectRecordFormat(usiString), .USI)
     }

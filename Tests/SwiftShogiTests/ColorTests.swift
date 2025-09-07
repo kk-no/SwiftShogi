@@ -3,7 +3,7 @@ import XCTest
 
 final class ColorTests: XCTestCase {
     
-    // MARK: - Basic Color Tests
+    // MARK: - 基本色テスト
     
     func testColorRawValues() {
         XCTAssertEqual(Color.black.rawValue, "black")
@@ -17,7 +17,7 @@ final class ColorTests: XCTestCase {
         XCTAssertTrue(allColors.contains(.white))
     }
     
-    // MARK: - Color Reversal Tests
+    // MARK: - 色反転テスト
     
     func testColorReversal() {
         XCTAssertEqual(Color.black.reversed(), .white)
@@ -29,7 +29,7 @@ final class ColorTests: XCTestCase {
         XCTAssertEqual(Color.white.reversed().reversed(), .white)
     }
     
-    // MARK: - SFEN Notation Tests
+    // MARK: - SFEN表記テスト
     
     func testSFENNotation() {
         XCTAssertEqual(Color.black.sfenNotation, "b")
@@ -57,7 +57,7 @@ final class ColorTests: XCTestCase {
         XCTAssertEqual(Color.fromSFEN(""), .white)
     }
     
-    // MARK: - Round Trip Tests
+    // MARK: - 往復変換テスト
     
     func testSFENRoundTrip() {
         // Test that converting to SFEN and back gives the original color

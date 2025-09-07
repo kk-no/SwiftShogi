@@ -35,6 +35,9 @@ final class SimpleBoardTests: XCTestCase {
     }
     
     func testFindKing() {
+        // Clear the board first since it starts with initial position
+        board.clear()
+        
         let kingSquare = Square(file: 5, rank: 9)
         let king = Piece(color: .black, type: .king)
         
@@ -48,7 +51,15 @@ final class SimpleBoardTests: XCTestCase {
     }
     
     func testBoardSFEN() {
+        // The board starts with the initial position, not empty
         let sfen = board.sfen
-        XCTAssertEqual(sfen, "9/9/9/9/9/9/9/9/9")
+        XCTAssertFalse(sfen.isEmpty)
+        // The actual SFEN will be the initial position
+        XCTAssertTrue(sfen.contains("/"))
+        
+        // Test empty board SFEN
+        board.clear()
+        let emptySfen = board.sfen
+        XCTAssertEqual(emptySfen, "9/9/9/9/9/9/9/9/9")
     }
 }

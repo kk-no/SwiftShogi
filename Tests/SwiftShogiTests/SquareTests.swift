@@ -3,7 +3,7 @@ import XCTest
 
 final class SquareTests: XCTestCase {
     
-    // MARK: - Basic Square Creation Tests
+    // MARK: - 基本マス作成テスト
     
     func testSquareInitialization() {
         let square = Square(file: 5, rank: 5)
@@ -33,7 +33,7 @@ final class SquareTests: XCTestCase {
         XCTAssertEqual(set.count, 2) // square1 and square2 are the same
     }
     
-    // MARK: - Coordinate System Tests
+    // MARK: - 座標システムテスト
     
     func testXYCoordinates() {
         let square = Square(file: 5, rank: 5) // Center of board
@@ -75,7 +75,7 @@ final class SquareTests: XCTestCase {
         XCTAssertEqual(oppositeCorner.rank, 9) // 10 - 1 = 9
     }
     
-    // MARK: - Neighbor Tests
+    // MARK: - 隣接マステスト
     
     func testNeighborWithDelta() {
         let center = Square(file: 5, rank: 5)
@@ -109,7 +109,7 @@ final class SquareTests: XCTestCase {
         XCTAssertEqual(right, Square(file: 4, rank: 5))
     }
     
-    // MARK: - Direction Tests
+    // MARK: - 方向テスト
     
     func testDirectionTo() {
         let origin = Square(file: 5, rank: 5)
@@ -133,7 +133,7 @@ final class SquareTests: XCTestCase {
         XCTAssertNotNil(direction)
     }
     
-    // MARK: - Validation Tests
+    // MARK: - 検証テスト
     
     func testIsValid() {
         // Valid squares
@@ -149,7 +149,7 @@ final class SquareTests: XCTestCase {
         XCTAssertFalse(Square(file: -1, rank: 5).isValid)
     }
     
-    // MARK: - USI/SFEN Format Tests
+    // MARK: - USI/SFENフォーマットテスト
     
     func testUSIFormat() {
         XCTAssertEqual(Square(file: 1, rank: 1).usi, "1a")
@@ -167,7 +167,7 @@ final class SquareTests: XCTestCase {
         XCTAssertEqual(square.sfen, square.usi)
     }
     
-    // MARK: - Static Factory Methods Tests
+    // MARK: - 静的ファクトリーメソッドテスト
     
     func testFromXY() {
         let square = Square.fromXY(x: 4, y: 4)
@@ -232,7 +232,7 @@ final class SquareTests: XCTestCase {
         XCTAssertNil(invalid)
     }
     
-    // MARK: - Round Trip Tests
+    // MARK: - 往復変換テスト
     
     func testUSIRoundTrip() {
         let originalSquare = Square(file: 7, rank: 3)
@@ -260,7 +260,7 @@ final class SquareTests: XCTestCase {
         }
     }
     
-    // MARK: - All Squares Test
+    // MARK: - 全マステスト
     
     func testAllSquares() {
         let allSquares = Square.allSquares

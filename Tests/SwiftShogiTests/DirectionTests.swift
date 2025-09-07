@@ -3,7 +3,7 @@ import XCTest
 
 final class DirectionTests: XCTestCase {
     
-    // MARK: - Basic Direction Tests
+    // MARK: - 基本方向テスト
     
     func testDirectionRawValues() {
         XCTAssertEqual(Direction.up.rawValue, "up")
@@ -20,7 +20,7 @@ final class DirectionTests: XCTestCase {
         XCTAssertEqual(Direction.rightDownKnight.rawValue, "right_down_knight")
     }
     
-    // MARK: - Direction Reversal Tests
+    // MARK: - 方向反転テスト
     
     func testBasicDirectionReversal() {
         XCTAssertEqual(Direction.up.reversed, .down)
@@ -50,7 +50,7 @@ final class DirectionTests: XCTestCase {
         }
     }
     
-    // MARK: - Delta Tests
+    // MARK: - デルタテスト
     
     func testBasicDirectionDeltas() {
         XCTAssertEqual(Direction.up.delta.x, 0)
@@ -94,7 +94,7 @@ final class DirectionTests: XCTestCase {
         XCTAssertEqual(Direction.rightDownKnight.delta.y, 2)
     }
     
-    // MARK: - Vertical Direction Tests
+    // MARK: - 垂直方向テスト
     
     func testVerticalDirection() {
         XCTAssertEqual(Direction.up.verticalDirection, .up)
@@ -113,7 +113,7 @@ final class DirectionTests: XCTestCase {
         XCTAssertEqual(Direction.right.verticalDirection, .none)
     }
     
-    // MARK: - Horizontal Direction Tests
+    // MARK: - 水平方向テスト
     
     func testHorizontalDirection() {
         XCTAssertEqual(Direction.left.horizontalDirection, .left)
@@ -132,7 +132,7 @@ final class DirectionTests: XCTestCase {
         XCTAssertEqual(Direction.down.horizontalDirection, .none)
     }
     
-    // MARK: - All Directions Test
+    // MARK: - 全方向テスト
     
     func testAllDirections() {
         let allDirections = Direction.allDirections
@@ -153,7 +153,7 @@ final class DirectionTests: XCTestCase {
         XCTAssertTrue(allDirections.contains(.rightDownKnight))
     }
     
-    // MARK: - Vector Conversion Tests
+    // MARK: - ベクトル変換テスト
     
     func testFromVectorBasicDirections() {
         let upResult = Direction.fromVector(x: 0, y: -1)
@@ -212,13 +212,13 @@ final class DirectionTests: XCTestCase {
     }
     
     func testFromVectorInvalidMoves() {
-        // Invalid diagonal (different absolute values for x and y)
-        let invalidDiagonal = Direction.fromVector(x: 1, y: 2)
+        // Invalid diagonal (different absolute values for x and y, not knight move)
+        let invalidDiagonal = Direction.fromVector(x: 2, y: 3)
         XCTAssertFalse(invalidDiagonal.valid)
         XCTAssertNil(invalidDiagonal.direction)
         
-        // Invalid knight-like move
-        let invalidKnight = Direction.fromVector(x: 2, y: 3)
+        // Invalid knight-like move (different from standard knight pattern)
+        let invalidKnight = Direction.fromVector(x: 3, y: 4)
         XCTAssertFalse(invalidKnight.valid)
         XCTAssertNil(invalidKnight.direction)
         
@@ -241,7 +241,7 @@ final class DirectionTests: XCTestCase {
         XCTAssertEqual(longDiagonal.distance, 3)
     }
     
-    // MARK: - Round Trip Tests
+    // MARK: - 往復変換テスト
     
     func testDeltaToVectorRoundTrip() {
         let allDirections = Direction.allDirections
