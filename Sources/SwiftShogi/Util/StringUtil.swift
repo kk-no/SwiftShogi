@@ -17,4 +17,12 @@ public enum StringUtil {
     public static func appendReturnIfNotExists(_ str: String) -> String {
         return str.hasSuffix("\n") ? str : str + "\n"
     }
+
+    /// 改行コードを標準化します。CR/CRLF を LF に統一します。
+    /// - Parameter data: 標準化する文字列
+    /// - Returns: 標準化された文字列（LF のみに統一）
+    public static func normalizeLineEndings(_ data: String) -> String {
+        return data.replacingOccurrences(of: "\r\n", with: "\n")
+                   .replacingOccurrences(of: "\r", with: "\n")
+    }
 }
