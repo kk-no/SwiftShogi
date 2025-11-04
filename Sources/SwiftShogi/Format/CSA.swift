@@ -425,9 +425,20 @@ private class CSAParser {
         } else {
             // 盤上の駒を動かす手
             let fromSquare = Square(file: fromFile, rank: fromRank)
-            let sourcePieceType = getPieceTypeBeforePromotion(destinationPieceType)
-            // 成るかどうかは、移動先の駒タイプが成駒で、移動元の駒が成っていない場合
-            let promote = isPromotedPiece(destinationPieceType) && !isPromotedPiece(sourcePieceType)
+
+            // 移動元の駒を確認する
+            guard let sourcePiece = record.position.board.at(fromSquare) else {
+                throw FormatError(message: "移動元に駒がありません（\(fromStr)): \(line)")
+            }
+
+            let sourcePieceType = sourcePiece.type
+            // 駒が成駒かどうかを判定：成る前のタイプと現在のタイプが異なる
+            let sourceIsPromoted = unpromotedType(of: sourcePieceType) != sourcePieceType
+
+            // 成ったかどうかの判定：
+            // - 移動先コードが成駒（UM, RY等）
+            // - かつ移動元の駒が成ったていない（角→馬、飛→竜の成り）
+            let promote = isPromotedPiece(destinationPieceType) && !sourceIsPromoted
 
             // 移動先の駒を取得
             let capturedPiece = record.position.board.at(toSquare)
