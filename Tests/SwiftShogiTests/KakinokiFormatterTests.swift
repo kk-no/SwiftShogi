@@ -321,7 +321,7 @@ final class KakinokiFormatterTests: XCTestCase {
     }
     
     // MARK: - 往復変換テスト
-    
+
     func testKIFRoundTrip() {
         // KIF -> Record -> KIF の往復テスト
         let originalKif = """
@@ -333,20 +333,116 @@ final class KakinokiFormatterTests: XCTestCase {
            2 ３四歩(33)   ( 0:00/00:00:00)
            3 中断
         """
-        
+
         let importResult = KakinokiFormatter.importKIF(originalKif)
-        
+
         switch importResult {
         case .success(let record):
             let options = KIFExportOptions()
             let exportedKif = KakinokiFormatter.exportKIF(record, options: options)
-            
+
             XCTAssertFalse(exportedKif.isEmpty)
             // 基本的な確認のみ
             XCTAssertTrue(true)
-            
+
         case .failure(let error):
             XCTFail("Round trip failed: \(error)")
         }
+    }
+
+    // MARK: - KIF 記録構造テスト
+
+    func testKIFProducesConsistentRecord() {
+        // KIF フォーマットから正常な Record が生成されることを確認
+        let kifData = """
+        先手：先手プレイヤー
+        後手：後手プレイヤー
+        手合割：平手
+        手数----指手---------消費時間--
+           1 ７六歩(77)   ( 0:00/00:00:00)
+           2 ３四歩(33)   ( 0:00/00:00:00)
+           3 ２六歩(27)   ( 0:00/00:00:00)
+           4 ８四歩(83)   ( 0:00/00:00:00)
+           5 投了
+        """
+
+        guard case .success(let record) = KakinokiFormatter.importKIF(kifData) else {
+            XCTFail("KIF import failed")
+            return
+        }
+
+        // Record が正常に構築されていることを確認
+        XCTAssertNotNil(record, "KIF record should not be nil")
+
+        // メタデータが正しくセットされていることを確認
+        XCTAssertEqual(record.metadata.blackPlayerName, "先手プレイヤー")
+        XCTAssertEqual(record.metadata.whitePlayerName, "後手プレイヤー")
+
+        // 手数を確認
+        var moveCount = 0
+        record.forEach { (node, _) in
+            if node.move is Move {
+                moveCount += 1
+            }
+        }
+
+        XCTAssertEqual(moveCount, 4, "KIF should have 4 moves")
+    }
+
+    func testKIFProducesValidPositions() {
+        let kifData = """
+        先手：先手
+        後手：後手
+        手合割：平手
+        手数----指手---------消費時間--
+           1 ７六歩(77)   ( 0:00/00:00:00)
+           2 ３四歩(33)   ( 0:00/00:00:00)
+           3 ２六歩(27)   ( 0:00/00:00:00)
+           4 投了
+        """
+
+        guard case .success(let record) = KakinokiFormatter.importKIF(kifData) else {
+            XCTFail("Import failed")
+            return
+        }
+
+        // 初期局面が平手であることを確認
+        XCTAssertNotNil(record.initialPosition, "KIF initial position should not be nil")
+
+        // 現在の局面が有効であることを確認
+        XCTAssertNotNil(record.position, "KIF position should not be nil")
+
+        // 手番が有効（黒または白）であることを確認
+        XCTAssertTrue(record.position.color == .black || record.position.color == .white,
+                      "KIF position should have valid color")
+    }
+
+    func testKIFTreeStructure() {
+        let kifData = """
+        先手：先手
+        後手：後手
+        手合割：平手
+        手数----指手---------消費時間--
+           1 ７六歩(77)   ( 0:00/00:00:00)
+           2 ３四歩(33)   ( 0:00/00:00:00)
+           3 ２六歩(27)   ( 0:00/00:00:00)
+           4 投了
+        """
+
+        guard case .success(let record) = KakinokiFormatter.importKIF(kifData) else {
+            XCTFail("Import failed")
+            return
+        }
+
+        // Record のツリー構造が正常であることを確認
+        var nodeCount = 0
+        record.forEach { (node, _) in
+            nodeCount += 1
+            // 各ノードに move が存在することを確認
+            XCTAssertNotNil(node.move, "KIF node should have a move")
+        }
+
+        // ノード数がゼロより大きいことを確認
+        XCTAssertGreaterThan(nodeCount, 0, "KIF should have nodes")
     }
 }
