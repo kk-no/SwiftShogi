@@ -97,6 +97,9 @@ public class SFENFormatter {
             }
         }
 
+        record.goto(0)
+        record.resetAllBranchSelection()
+
         return .success(record)
     }
 
