@@ -83,7 +83,7 @@ final class RecordTests: XCTestCase {
             XCTAssertNotNil(record)
             
             // Export should contain all moves
-            let options = SFENFormatter.USIFormatOptions()
+            let options = SFENFormatter.USIFormatOptions(allMoves: true)
             let exportedUSI = SFENFormatter.exportUSI(record, options: options)
             
             XCTAssertTrue(exportedUSI.contains("7g7f"))

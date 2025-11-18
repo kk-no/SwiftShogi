@@ -241,6 +241,9 @@ private class CSAParser {
         // パース段階4: 指し手を適用
         try parseMoves(record: record)
 
+        record.goto(0)
+        record.resetAllBranchSelection()
+
         return record
     }
 
