@@ -260,6 +260,17 @@ public class Record: ImmutableRecord {
         return _current.prevNode?.nextNode ?? _current
     }
 
+    /// 現在のノードの次の手の分岐一覧を取得します
+    public var nextBranches: [ImmutableNode] {
+        var result: [ImmutableNode] = []
+        var node = _current.nextNode
+        while node != nil {
+            result.append(node!)
+            node = node?.branchNode
+        }
+        return result
+    }
+
     /// 指定した局面で棋譜を初期化します
     /// - Parameter position: 局面
     public func clear(position: Position? = nil) {
@@ -848,6 +859,126 @@ public class Record: ImmutableRecord {
             onChangePosition = handler
         default:
             break
+        }
+    }
+
+    // MARK: - 分岐削除
+
+    /// 指定したノードとその子孫を全て削除します
+    /// - Parameter node: 削除対象のノード
+    /// - Returns: 削除が成功したかどうか
+    @discardableResult
+    public func removeBranch(_ node: ImmutableNode) -> Bool {
+        // バリデーション: ルートノードは削除不可
+        guard node.ply > 0 else {
+            return false
+        }
+
+        // 可変ノード参照を取得
+        guard let targetNode = node as? NodeImpl,
+              let parentNode = targetNode.prevNode else {
+            return false
+        }
+
+        // currentが削除対象の分岐内にあるかチェック
+        let needsCurrentUpdate = isNodeInBranch(_current, root: targetNode)
+
+        // 兄弟チェーンから削除対象を除去
+        if parentNode.nextNode === targetNode {
+            // ケースA: 削除対象が最初の子ノード
+            parentNode.nextNode = targetNode.branchNode
+        } else {
+            // ケースB: 削除対象が兄弟チェーンの途中
+            var prevSibling = parentNode.nextNode
+            while prevSibling != nil && prevSibling?.branchNode !== targetNode {
+                prevSibling = prevSibling?.branchNode
+            }
+            prevSibling?.branchNode = targetNode.branchNode
+        }
+
+        // 残った兄弟ノードのbranchIndexを再採番
+        reindexBranches(from: parentNode)
+
+        // 少なくとも1つの兄弟がアクティブであることを保証
+        ensureActiveBranch(from: parentNode)
+
+        // 必要に応じてcurrentを更新
+        if needsCurrentUpdate {
+            _current = parentNode
+            // position状態を最初から再構築
+            recalculatePosition()
+        }
+
+        onChangePosition()
+        return true
+    }
+
+    /// 現在位置まで局面を再計算します
+    private func recalculatePosition() {
+        _position = _initialPosition.clone()
+        repetitionCounts = [:]
+        repetitionStart = [:]
+        incrementRepetition()
+
+        var node = _first.nextNode
+        while node != nil && node!.ply <= _current.ply {
+            while node != nil && !node!.activeBranch {
+                node = node?.branchNode
+            }
+            guard let activeNode = node, activeNode.ply <= _current.ply else {
+                break
+            }
+            if let move = activeNode.move as? Move {
+                _position.doMove(move, option: DoMoveOption(ignoreValidation: true))
+                incrementRepetition()
+            }
+            node = activeNode.nextNode
+        }
+    }
+
+    /// ノードが指定されたルート配下のサブツリー内にあるかチェックします
+    private func isNodeInBranch(_ node: NodeImpl, root: NodeImpl) -> Bool {
+        var current: NodeImpl? = node
+        while current != nil {
+            if current === root {
+                return true
+            }
+            current = current?.prevNode
+        }
+        return false
+    }
+
+    /// branchIndexを0から振り直します
+    private func reindexBranches(from parent: NodeImpl) {
+        var index = 0
+        var sibling = parent.nextNode
+        while sibling != nil {
+            sibling?.branchIndex = index
+            index += 1
+            sibling = sibling?.branchNode
+        }
+    }
+
+    /// 少なくとも1つの分岐がアクティブとしてマークされていることを保証します
+    private func ensureActiveBranch(from parent: NodeImpl) {
+        guard let firstChild = parent.nextNode else {
+            return
+        }
+
+        // アクティブな兄弟が存在するかチェック
+        var hasActive = false
+        var sibling: NodeImpl? = firstChild
+        while sibling != nil {
+            if sibling!.activeBranch {
+                hasActive = true
+                break
+            }
+            sibling = sibling?.branchNode
+        }
+
+        // アクティブな分岐がない場合は最初の分岐をアクティブにする
+        if !hasActive {
+            firstChild.activeBranch = true
         }
     }
 
