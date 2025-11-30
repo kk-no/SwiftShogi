@@ -1,0 +1,23 @@
+name: Test
+
+on:
+  push:
+    branches: 
+      - main
+      - development
+  pull_request:
+    branches: 
+      - main
+      - development
+
+jobs:
+  test:
+    name: Test
+    runs-on: macos-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run tests
+      run: swift test

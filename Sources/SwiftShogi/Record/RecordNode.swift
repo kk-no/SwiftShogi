@@ -89,10 +89,10 @@ public class NodeImpl: Node {
     public var totalElapsedMs: Int = 0
     public var bookmark: String = ""
     public var activeBranch: Bool
+    public var branchIndex: Int
 
     // 不変のプロパティ
     public let ply: Int
-    public let branchIndex: Int
     public let nextColor: Color
     public let move: Any
     public let isCheck: Bool
