@@ -400,4 +400,48 @@ class CSAFormatterTests: XCTestCase {
             XCTAssertTrue(false, "Failed to import CSA with custom initial position: \(error.message)")
         }
     }
+
+    // MARK: - 成り駒のキャプチャとundoテスト
+
+    func testCapturedPromotedPieceUndoCSA() {
+        // 角が成って馬になり、それを取ってundoする
+        let csaData = """
+        PI
+        +
+        +7776FU
+        -3334FU
+        +8822UM
+        -3122GI
+        """
+
+        guard case .success(let record) = CSAFormatter.importCSA(csaData) else {
+            XCTFail("CSA import failed")
+            return
+        }
+
+        // 4手目まで進める
+        record.goto(4)
+
+        // 22に銀があることを確認
+        let square22 = Square(file: 2, rank: 2)
+        let pieceAt22After = record.position.board.at(square22)
+        XCTAssertNotNil(pieceAt22After)
+        XCTAssertEqual(pieceAt22After?.type, .silver)
+        XCTAssertEqual(pieceAt22After?.color, .white, "22の駒は後手の駒であるべき")
+
+        // 後手の持ち駒に角があることを確認
+        XCTAssertEqual(record.position.hand(color: .white).count(pieceType: .bishop), 1, "後手の持ち駒に角が1枚あるべき")
+        XCTAssertEqual(record.position.hand(color: .white).count(pieceType: .horse), 0, "後手の持ち駒に馬はない")
+
+        // 1手戻す
+        _ = record.goBack()
+
+        // 22には馬があるべき
+        let pieceAt22Before = record.position.board.at(square22)
+        XCTAssertNotNil(pieceAt22Before, "22に駒があるべき")
+        XCTAssertEqual(pieceAt22Before?.type, .horse, "22の駒は馬であるべき")
+
+        // 持ち駒から角がなくなっていることを確認
+        XCTAssertEqual(record.position.hand(color: .white).count(pieceType: .bishop), 0, "undo後、後手の持ち駒に角はない")
+    }
 }
