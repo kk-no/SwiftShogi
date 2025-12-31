@@ -399,7 +399,7 @@ private class CSAParser {
         let moveData = String(line.dropFirst(1))
 
         guard moveData.count >= 6 else {
-            throw FormatError(message: "CSA形式が不正です（期待: +/-FFTTPP）: \(line)")
+            throw FormatError(message: "Invalid move format")
         }
 
         let fromStr = String(moveData.prefix(2))
@@ -414,46 +414,48 @@ private class CSAParser {
               let toRank = Int(String(toStr.suffix(1))),
               let destinationPieceType = CSAFormatter.csaPieceCodeReverseMap[pieceCodeStr]
         else {
-            throw FormatError(message: "指し手データが不正です（ファイル、段、駒コード）: \(line)")
+            throw FormatError(message: "Invalid move format")
         }
 
         let toSquare = Square(file: toFile, rank: toRank)
 
-        let move: Move
+        // 移動元を決定
+        let from: Either<Square, PieceType>
         if fromFile == 0 && fromRank == 0 {
-            // 手駒から打つ手
-            let capturedPiece = record.position.board.at(toSquare)
-            let capturedPieceType = capturedPiece?.unpromoted().type
-            move = Move(from: destinationPieceType, to: toSquare, color: color, capturedPieceType: capturedPieceType)
+            from = .right(destinationPieceType)
         } else {
-            // 盤上の駒を動かす手
-            let fromSquare = Square(file: fromFile, rank: fromRank)
+            from = .left(Square(file: fromFile, rank: fromRank))
+        }
 
-            // 移動元の駒を確認する
+        // 指し手を生成
+        guard var move = record.position.createMove(from: from, to: toSquare) else {
+            throw FormatError(message: "Invalid move")
+        }
+
+        // 手番の整合性チェック
+        if record.position.color != color {
+            throw FormatError(message: "Invalid move")
+        }
+
+        // 成りの設定
+        if case let .left(fromSquare) = from {
             guard let sourcePiece = record.position.board.at(fromSquare) else {
-                throw FormatError(message: "移動元に駒がありません（\(fromStr)): \(line)")
+                throw FormatError(message: "Cannot determine the source of the move")
             }
 
             let sourcePieceType = sourcePiece.type
-            // 駒が成駒かどうかを判定：成る前のタイプと現在のタイプが異なる
             let sourceIsPromoted = unpromotedType(of: sourcePieceType) != sourcePieceType
 
-            // 成ったかどうかの判定：
-            // - 移動先コードが成駒（UM, RY等）
-            // - かつ移動元の駒が成ったていない（角→馬、飛→竜の成り）
-            let promote = isPromotedPiece(destinationPieceType) && !sourceIsPromoted
-
-            // 移動先の駒を取得
-            let capturedPiece = record.position.board.at(toSquare)
-            let capturedPieceType = capturedPiece?.unpromoted().type
-
-            move = Move(from: fromSquare, to: toSquare, promote: promote, color: color, pieceType: sourcePieceType, capturedPieceType: capturedPieceType)
+            // 移動先コードが成駒（UM, RY等）かつ移動元が成っていない場合
+            if isPromotedPiece(destinationPieceType) && !sourceIsPromoted {
+                move = move.withPromote()
+            }
         }
 
-        // 手を適用
+        // 指し手を追加
         let success = record.append(move)
         if !success {
-            throw FormatError(message: "不正な指し手（ルール違反またはその他の検証エラー）: \(line)")
+            throw FormatError(message: "Failed to apply move")
         }
     }
 

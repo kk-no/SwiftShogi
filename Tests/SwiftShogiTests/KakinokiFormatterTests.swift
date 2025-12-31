@@ -445,4 +445,49 @@ final class KakinokiFormatterTests: XCTestCase {
         // ノード数がゼロより大きいことを確認
         XCTAssertGreaterThan(nodeCount, 0, "KIF should have nodes")
     }
+
+    // MARK: - 成り駒のキャプチャとundoテスト
+
+    func testCapturedPromotedPieceUndoKIF() {
+        // 角が成って馬になり、それを取ってundoする
+        let kifData = """
+        手合割：平手
+        手数----指手---------消費時間--
+           1 ７六歩(77)   ( 0:00/00:00:00)
+           2 ３四歩(33)   ( 0:00/00:00:00)
+           3 ２二角成(88) ( 0:00/00:00:00)
+           4 同　銀(31)   ( 0:00/00:00:00)
+        """
+
+        guard case .success(let record) = KakinokiFormatter.importKIF(kifData) else {
+            XCTFail("KIF import failed")
+            return
+        }
+
+        // 4手目まで進める
+        record.goto(4)
+
+        // 22に銀があることを確認
+        let square22 = Square(file: 2, rank: 2)
+        let pieceAt22After = record.position.board.at(square22)
+        XCTAssertNotNil(pieceAt22After, "22に駒があるべき")
+        XCTAssertEqual(pieceAt22After?.type, .silver, "22は銀であるべき")
+        XCTAssertEqual(pieceAt22After?.color, .white, "22の駒は後手の駒であるべき")
+
+        // 後手の持ち駒に角があることを確認
+        XCTAssertEqual(record.position.hand(color: .white).count(pieceType: .bishop), 1, "後手の持ち駒に角が1枚あるべき")
+        XCTAssertEqual(record.position.hand(color: .white).count(pieceType: .horse), 0, "後手の持ち駒に馬はない")
+
+        // 1手戻す
+        _ = record.goBack()
+
+        // 22には先手の馬があるべき（角ではない）
+        let pieceAt22Before = record.position.board.at(square22)
+        XCTAssertNotNil(pieceAt22Before, "22に駒があるべき")
+        XCTAssertEqual(pieceAt22Before?.color, .black, "22の駒は先手の駒であるべき")
+        XCTAssertEqual(pieceAt22Before?.type, .horse, "22の駒は馬であるべき")
+
+        // 持ち駒から角がなくなっていることを確認
+        XCTAssertEqual(record.position.hand(color: .white).count(pieceType: .bishop), 0, "undo後、後手の持ち駒に角はない")
+    }
 }
