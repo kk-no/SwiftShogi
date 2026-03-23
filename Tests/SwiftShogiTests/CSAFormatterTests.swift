@@ -361,8 +361,7 @@ class CSAFormatterTests: XCTestCase {
     // MARK: - カスタム初期局面テスト
 
     func testImportCSAWithCustomInitialPosition() {
-        // P1-P9 形式で初期局面が定義されている CSA 棋譜
-        // P1-P9 は無視して、すべて初期局面として扱う
+        // P1-P9 形式で平手と同じ配置を指定した CSA 棋譜
         let csaDataWithCustomInitial = """
         V2.2
         N+PlayerA
@@ -386,7 +385,6 @@ class CSAFormatterTests: XCTestCase {
         let result = CSAFormatter.importCSA(csaDataWithCustomInitial)
         switch result {
         case .success(let record):
-            // P1-P9 で定義された局面は無視されて、初期局面として扱われる
             XCTAssertNotNil(record)
             // 手数を確認
             var moveCount = 0
@@ -443,5 +441,109 @@ class CSAFormatterTests: XCTestCase {
 
         // 持ち駒から角がなくなっていることを確認
         XCTAssertEqual(record.position.hand(color: .white).count(pieceType: .bishop), 0, "undo後、後手の持ち駒に角はない")
+    }
+
+    // MARK: - カスタム初期局面（ランダム配置）
+
+    func testImportCSAWithRandomInitialPosition() {
+        // カスタム初期局面 + 持ち駒 + T行 + %TIME_UP を含む CSA 棋譜
+        let csaData = """
+        SomeApp
+        N+Player1(2000)
+        N-Player2(2000)
+        P1-KY-KE *  *  * -KI-GI-KE-KY
+        P2 *  *  * -HI-KI * -OU-KA *
+        P3 *  * -FU * -FU-FU * -FU-FU
+        P4-FU *  *  * -GI * -FU *  *
+        P5 * -FU+FU *  *  *  *  *  *
+        P6 *  *  * +FU+FU *  *  *  *
+        P7+FU+FU+KA+GI+GI+FU+FU+FU+FU
+        P8 *  * +KI * +KI *  * +HI *
+        P9+KY+KE+OU *  *  *  * +KE+KY
+        P-00FU
+        +
+        +6776GI
+        T3
+        -0065FU
+        T7
+        +6665FU
+        T2
+        %TIME_UP
+        """
+
+        let result = CSAFormatter.importCSA(csaData)
+        switch result {
+        case .success(let record):
+            // 指し手が3手あること
+            var moveCount = 0
+            record.forEach { (node, _) in
+                if node.move is Move { moveCount += 1 }
+            }
+            XCTAssertEqual(moveCount, 3, "Should have 3 moves")
+
+            // 後手の持ち駒（歩1枚）が初期局面に設定されていること
+            let whiteHand = record.initialPosition.hand(color: .white)
+            XCTAssertEqual(whiteHand.count(pieceType: .pawn), 1, "White should have 1 pawn in hand")
+
+        case .failure(let error):
+            XCTFail("Failed to import CSA with random initial position: \(error.message)")
+        }
+    }
+
+    func testImportCSAWithHandPieces() {
+        // 複数種類の持ち駒（先手歩2枚、後手桂1枚）
+        let csaData = """
+        V2.2
+        P1-KY-KE-GI-KI-OU-KI-GI-KE-KY
+        P2 * -HI *  *  *  *  * -KA *
+        P3-FU-FU-FU-FU-FU-FU-FU-FU-FU
+        P4 *  *  *  *  *  *  *  *  *
+        P5 *  *  *  *  *  *  *  *  *
+        P6 *  *  *  *  *  *  *  *  *
+        P7+FU+FU+FU+FU+FU+FU+FU+FU+FU
+        P8 * +KA *  *  *  *  * +HI *
+        P9+KY+KE+GI+KI+OU+KI+GI+KE+KY
+        P+00FU00FU
+        P-00KE
+        +
+        +7776FU
+        %TORYO
+        """
+
+        let result = CSAFormatter.importCSA(csaData)
+        guard case .success(let record) = result else {
+            XCTFail("Import failed")
+            return
+        }
+        let blackHand = record.initialPosition.hand(color: .black)
+        let whiteHand = record.initialPosition.hand(color: .white)
+        XCTAssertEqual(blackHand.count(pieceType: .pawn), 2, "Black should have 2 pawns in hand")
+        XCTAssertEqual(whiteHand.count(pieceType: .knight), 1, "White should have 1 knight in hand")
+    }
+
+    func testImportCSAWithWhiteToMove() {
+        // 後手番開始のカスタム局面
+        let csaData = """
+        V2.2
+        P1-KY-KE-GI-KI-OU-KI-GI-KE-KY
+        P2 * -HI *  *  *  *  * -KA *
+        P3-FU-FU-FU-FU-FU-FU-FU-FU-FU
+        P4 *  *  *  *  *  *  *  *  *
+        P5 *  *  *  *  *  *  *  *  *
+        P6 *  *  *  *  *  *  *  *  *
+        P7+FU+FU+FU+FU+FU+FU+FU+FU+FU
+        P8 * +KA *  *  *  *  * +HI *
+        P9+KY+KE+GI+KI+OU+KI+GI+KE+KY
+        -
+        -3334FU
+        %TORYO
+        """
+
+        let result = CSAFormatter.importCSA(csaData)
+        guard case .success(let record) = result else {
+            XCTFail("Import failed")
+            return
+        }
+        XCTAssertEqual(record.initialPosition.color, .white, "Should start with white to move")
     }
 }
