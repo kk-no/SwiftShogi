@@ -304,10 +304,14 @@ private class CSAParser {
     }
 
     private func parsePosition() throws {
-        // 現在の位置を初期化
         position = Position()
 
-        // PI（標準初期位置）または P1-P9（カスタム位置 - すべて初期局面として扱う）
+        var boardLines: [Int: String] = [:]
+        let blackHand = Hand()
+        let whiteHand = Hand()
+        var sideToMove: Color = .black
+        var hasCustomPosition = false
+
         while currentLineIndex < lines.count {
             let line = lines[currentLineIndex].trimmingCharacters(in: .whitespaces)
 
@@ -316,43 +320,117 @@ private class CSAParser {
                 continue
             }
 
-            // PI: 標準初期位置
+            // PI: 標準初期位置（Position() のデフォルトが平手なので何もしない）
             if line == "PI" {
-                position = Position()
                 currentLineIndex += 1
                 continue
             }
 
-            // P1-P9: ボードラインの指定（無視して初期局面のままにする）
             if line.hasPrefix("P") && line.count > 1 {
                 let secondCharIndex = line.index(line.startIndex, offsetBy: 1)
                 let secondChar = line[secondCharIndex]
 
-                if let rank = Int(String(secondChar)), rank >= 1 && rank <= 9 {
-                    // P1-P9 は無視する
+                if let rank = Int(String(secondChar)), 1 <= rank && rank <= 9 {
+                    hasCustomPosition = true
+                    // trimmingCharacters で末尾スペースが落ちる場合があるため 27 文字にパディング
+                    let content = String(line.dropFirst(2)).padding(toLength: 27, withPad: " ", startingAt: 0)
+                    boardLines[rank] = content
                     currentLineIndex += 1
                     continue
-                } else if secondChar == "+" || secondChar == "-" {
-                    // 持ち駒行は無視する
+                }
+
+                if secondChar == "+" || secondChar == "-" {
+                    hasCustomPosition = true
+                    let hand = secondChar == "+" ? blackHand : whiteHand
+                    let handStr = String(line.dropFirst(2))
+                    var i = handStr.startIndex
+                    while handStr.distance(from: i, to: handStr.endIndex) >= 4 {
+                        let end = handStr.index(i, offsetBy: 4)
+                        let chunk = handStr[i..<end]
+                        if chunk.hasPrefix("00") {
+                            let pieceCode = String(chunk.suffix(2))
+                            if let pieceType = CSAFormatter.csaPieceCodeReverseMap[pieceCode] {
+                                hand.add(pieceType: pieceType, count: 1)
+                            }
+                        }
+                        i = end
+                    }
                     currentLineIndex += 1
                     continue
                 }
             }
 
-            // 手番の宣言（+ または -）
             if line == "+" || line == "-" {
-                // 手番は position.color で管理される
+                sideToMove = (line == "+") ? .black : .white
                 currentLineIndex += 1
                 break
             }
 
-            // 指し手の開始
             if line.hasPrefix("+") || line.hasPrefix("-") {
                 break
             }
 
             currentLineIndex += 1
         }
+
+        if hasCustomPosition {
+            let sfen = buildSFENFromCSAPosition(
+                boardLines: boardLines,
+                blackHand: blackHand,
+                whiteHand: whiteHand,
+                color: sideToMove
+            )
+            guard position.resetBySFEN(sfen) else {
+                throw FormatError(message: "CSA P1-P9 形式の局面を SFEN に変換できませんでした: \(sfen)")
+            }
+        }
+    }
+
+    private func buildSFENFromCSAPosition(
+        boardLines: [Int: String],
+        blackHand: Hand,
+        whiteHand: Hand,
+        color: Color
+    ) -> String {
+        var boardSFEN = ""
+        for rank in 1...9 {
+            if rank > 1 { boardSFEN += "/" }
+
+            guard let line = boardLines[rank] else {
+                boardSFEN += "9"
+                continue
+            }
+
+            var empty = 0
+            var i = line.startIndex
+            while line.distance(from: i, to: line.endIndex) >= 3 {
+                let end = line.index(i, offsetBy: 3)
+                let cell = line[i..<end]
+                i = end
+
+                if cell == " * " {
+                    empty += 1
+                } else {
+                    if empty > 0 {
+                        boardSFEN += String(empty)
+                        empty = 0
+                    }
+                    let pieceCode = String(cell.suffix(2))
+                    if let pieceType = CSAFormatter.csaPieceCodeReverseMap[pieceCode] {
+                        let pieceColor: Color = cell.hasPrefix("+") ? .black : .white
+                        boardSFEN += Piece(color: pieceColor, type: pieceType).sfen
+                    }
+                }
+            }
+            if empty > 0 {
+                boardSFEN += String(empty)
+            }
+        }
+
+        let colorSFEN = color.sfenNotation
+        let handSFEN = Hand.formatSFEN(black: blackHand, white: whiteHand)
+
+        return "\(boardSFEN) \(colorSFEN) \(handSFEN) 1"
     }
 
 
