@@ -47,7 +47,9 @@ final class PositionTests: XCTestCase {
         let validSfens = [
             "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1",
             "9/9/9/9/9/9/9/9/9 b - 1",
-            "4k4/9/9/9/9/9/9/9/4K4 w R 10"
+            "4k4/9/9/9/9/9/9/9/4K4 w R 10",
+            "4k4/9/9/9/9/9/9/9/+P3K4 b - 1",
+            "+P+L+N+S+B+R3/9/9/9/9/9/9/9/4k4 b - 1"
         ]
         
         for sfen in validSfens {
@@ -65,6 +67,31 @@ final class PositionTests: XCTestCase {
         for sfen in invalidSfens {
             XCTAssertFalse(Position.isValidSFEN(sfen), "Should be invalid: \(sfen)")
         }
+    }
+
+    func testPositionFromSFENWithPromotedPieces() {
+        let simpleSfen = "4k4/9/9/9/9/9/9/9/+P3K4 b - 1"
+        guard let simple = Position.fromSFEN(simpleSfen) else {
+            XCTFail("Failed to create position from SFEN with a promoted pawn")
+            return
+        }
+        XCTAssertEqual(simple.board.at(Square(file: 9, rank: 9)), Piece(color: .black, type: .promPawn))
+        XCTAssertEqual(simple.board.at(Square(file: 5, rank: 9))?.type, .king)
+        XCTAssertEqual(simple.board.at(Square(file: 5, rank: 1))?.type, .king)
+        XCTAssertEqual(simple.sfen, simpleSfen)
+
+        let allSfen = "+P+L+N+S+B+R3/9/9/9/9/9/9/9/4k4 b - 1"
+        guard let all = Position.fromSFEN(allSfen) else {
+            XCTFail("Failed to create position from SFEN with all promoted piece types")
+            return
+        }
+        XCTAssertEqual(all.board.at(Square(file: 9, rank: 1)), Piece(color: .black, type: .promPawn))
+        XCTAssertEqual(all.board.at(Square(file: 8, rank: 1)), Piece(color: .black, type: .promLance))
+        XCTAssertEqual(all.board.at(Square(file: 7, rank: 1)), Piece(color: .black, type: .promKnight))
+        XCTAssertEqual(all.board.at(Square(file: 6, rank: 1)), Piece(color: .black, type: .promSilver))
+        XCTAssertEqual(all.board.at(Square(file: 5, rank: 1)), Piece(color: .black, type: .horse))
+        XCTAssertEqual(all.board.at(Square(file: 4, rank: 1)), Piece(color: .black, type: .dragon))
+        XCTAssertEqual(all.sfen, allSfen)
     }
     
     // MARK: - 指し手実行テスト
