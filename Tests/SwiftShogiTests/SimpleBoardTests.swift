@@ -62,4 +62,39 @@ final class SimpleBoardTests: XCTestCase {
         let emptySfen = board.sfen
         XCTAssertEqual(emptySfen, "9/9/9/9/9/9/9/9/9")
     }
+
+    // Board SFEN with all six black promoted pieces (+P/+L/+N/+S/+B/+R)
+    func testResetBySFENWithPromotedPieces() {
+        let sfen = "+P+L+N+S+B+R3/9/9/9/9/9/9/9/9"
+        XCTAssertTrue(board.resetBySFEN(sfen))
+
+        XCTAssertEqual(board.at(Square(file: 9, rank: 1)), Piece(color: .black, type: .promPawn))
+        XCTAssertEqual(board.at(Square(file: 8, rank: 1)), Piece(color: .black, type: .promLance))
+        XCTAssertEqual(board.at(Square(file: 7, rank: 1)), Piece(color: .black, type: .promKnight))
+        XCTAssertEqual(board.at(Square(file: 6, rank: 1)), Piece(color: .black, type: .promSilver))
+        XCTAssertEqual(board.at(Square(file: 5, rank: 1)), Piece(color: .black, type: .horse))
+        XCTAssertEqual(board.at(Square(file: 4, rank: 1)), Piece(color: .black, type: .dragon))
+
+        XCTAssertEqual(board.sfen, sfen)
+    }
+
+    func testResetBySFENWithWhitePromotedPieces() {
+        let sfen = "+p+l+n+s+b+r3/9/9/9/9/9/9/9/9"
+        XCTAssertTrue(board.resetBySFEN(sfen))
+
+        XCTAssertEqual(board.at(Square(file: 9, rank: 1)), Piece(color: .white, type: .promPawn))
+        XCTAssertEqual(board.at(Square(file: 8, rank: 1)), Piece(color: .white, type: .promLance))
+        XCTAssertEqual(board.at(Square(file: 7, rank: 1)), Piece(color: .white, type: .promKnight))
+        XCTAssertEqual(board.at(Square(file: 6, rank: 1)), Piece(color: .white, type: .promSilver))
+        XCTAssertEqual(board.at(Square(file: 5, rank: 1)), Piece(color: .white, type: .horse))
+        XCTAssertEqual(board.at(Square(file: 4, rank: 1)), Piece(color: .white, type: .dragon))
+
+        XCTAssertEqual(board.sfen, sfen)
+    }
+
+    func testIsValidSFENWithPromotedPieces() {
+        XCTAssertTrue(Board.isValidSFEN("+P+L+N+S+B+R3/9/9/9/9/9/9/9/9"))
+        XCTAssertTrue(Board.isValidSFEN("4k4/9/9/9/9/9/9/9/+P3K4"))
+        XCTAssertTrue(Board.isValidSFEN("+p+l+n+s+b+r3/9/9/9/9/9/9/9/9"))
+    }
 }

@@ -172,7 +172,7 @@ public class Board: ImmutableBoard {
                     c += nextChar
                 }
 
-                if let n = sfenCharToNumber(Character(c)) {
+                if c.count == 1, let n = sfenCharToNumber(Character(c)) {
                     x += n
                 } else if let piece = Piece.fromSFEN(c) {
                     set(square: Square.fromXY(x: x, y: y), piece: piece)
@@ -372,7 +372,7 @@ public class Board: ImmutableBoard {
                     c += nextChar
                 }
 
-                if let n = sfenCharToNumber(Character(c)) {
+                if c.count == 1, let n = sfenCharToNumber(Character(c)) {
                     x += n
                 } else if Piece.isValidSFEN(c) {
                     x += 1
