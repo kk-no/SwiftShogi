@@ -46,8 +46,8 @@ public enum FormatDetector {
         }
 
         // KIF vs KI2 vs CSA: 行頭の文字の出現頻度を比較する。
-        let pattKIF = "(^|\\n)[ \\u{3000}]*[#0-9開終棋手戦表持秒記消場掲備先後作発出完分受]"
-        let pattKI2 = "(^|\\n)[ \\u{3000}]*[#▲△▼▽☗☖開終棋手戦表持秒記消場掲備先後作発出完分受]"
+        let pattKIF = "(^|\\n)[ \u{3000}]*[#0-9開終棋手戦表持秒記消場掲備先後作発出完分受]"
+        let pattKI2 = "(^|\\n)[ \u{3000}]*[#▲△▼▽☗☖開終棋手戦表持秒記消場掲備先後作発出完分受]"
         let pattCSA = "(^|,|\\n)[-+$%'VNPT]"
 
         let matchedKIF = regularExpressionMatches(pattern: pattKIF, data: data)

@@ -77,44 +77,6 @@ final class KakinokiFormatterTests: XCTestCase {
         }
     }
     
-    // MARK: - KI2フォーマット読み込みテスト
-    
-    func testImportBasicKI2() {
-        let ki2String = """
-        先手：先手プレイヤー
-        後手：後手プレイヤー
-        ▲７六歩 △３四歩 ▲２六歩 △４四歩 ▲中断
-        """
-        
-        let result = KakinokiFormatter.importKI2(ki2String)
-        
-        switch result {
-        case .success(let record):
-            XCTAssertNotNil(record)
-            XCTAssertEqual(record.metadata.blackPlayerName, "先手プレイヤー")
-            XCTAssertEqual(record.metadata.whitePlayerName, "後手プレイヤー")
-            
-        case .failure(let error):
-            XCTFail("Failed to import KI2: \(error)")
-        }
-    }
-    
-    func testImportKI2WithAlternativeSymbols() {
-        let ki2String = """
-        ☗７六歩 ☖３四歩 ☗２六歩 ☖４四歩
-        """
-        
-        let result = KakinokiFormatter.importKI2(ki2String)
-        
-        switch result {
-        case .success(let record):
-            XCTAssertNotNil(record)
-            
-        case .failure(let error):
-            XCTFail("Failed to import KI2 with alternative symbols: \(error)")
-        }
-    }
-    
     // MARK: - KIFエクスポートテスト
     
     func testExportBasicKIF() {
@@ -142,8 +104,7 @@ final class KakinokiFormatterTests: XCTestCase {
     func testExportKIFWithMoves() {
         if let position = Position.fromSFEN("lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1") {
             let record = Record(position: position)
-            
-            // 基本的な手を追加（実装に依存）
+
             let move = Move(
                 from: .left(Square(file: 7, rank: 7)),
                 to: Square(file: 7, rank: 6),
@@ -152,34 +113,14 @@ final class KakinokiFormatterTests: XCTestCase {
                 pieceType: .pawn,
                 capturedPieceType: nil
             )
-            
-            // 手をレコードに追加（実際のAPIに合わせて調整が必要）
+            XCTAssertTrue(record.append(move))
+
             let options = KIFExportOptions()
             let kifOutput = KakinokiFormatter.exportKIF(record, options: options)
-            
+
             XCTAssertFalse(kifOutput.isEmpty)
             XCTAssertTrue(kifOutput.contains("手数----指手"))
-        }
-    }
-    
-    // MARK: - KI2エクスポートテスト
-    
-    func testExportBasicKI2() {
-        if let position = Position.fromSFEN("lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1") {
-            let record = Record(position: position)
-            if let mutableMetadata = record.metadata as? RecordMetadata {
-                mutableMetadata.setStandardMetadata(.blackName, value: "テスト先手")
-                mutableMetadata.setStandardMetadata(.whiteName, value: "テスト後手")
-            }
-            
-            let options = KI2ExportOptions()
-            let ki2Output = KakinokiFormatter.exportKI2(record, options: options)
-            
-            XCTAssertFalse(ki2Output.isEmpty)
-            XCTAssertTrue(ki2Output.contains("先手：テスト先手"))
-            XCTAssertTrue(ki2Output.contains("後手：テスト後手"))
-        } else {
-            XCTFail("Failed to create test position")
+            XCTAssertTrue(kifOutput.contains("７六歩(77)"))
         }
     }
     

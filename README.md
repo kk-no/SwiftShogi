@@ -20,8 +20,15 @@ if let move = position.createMove(from: "7g7f") {
 }
 
 // KIF形式の棋譜を読み込む
-if let record = try? Kakinoki.importKIF(from: kifString) {
+if case .success(let record) = KakinokiFormatter.importKIF(kifString) {
     // 棋譜を1手ずつ進める
+    while record.goForward() {
+        print(record.current.displayText)
+    }
+}
+
+// KI2形式の棋譜を読み込む
+if case .success(let record) = KakinokiFormatter.importKI2(ki2String) {
     while record.goForward() {
         print(record.current.displayText)
     }
@@ -39,7 +46,8 @@ if let record = try? Kakinoki.importKIF(from: kifString) {
 
 ## 対応フォーマット
 
-- **KIF** - 伝統的な棋譜フォーマット（人間が読みやすい形式）
+- **KIF** - 伝統的な棋譜フォーマット
+- **KI2** - 移動元座標の代わりに相対位置（右・左・直・上・引・寄）で表記するフォーマット
 - **CSA** - コンピュータ将棋協会の標準フォーマット
 
 ## 主なデータ型

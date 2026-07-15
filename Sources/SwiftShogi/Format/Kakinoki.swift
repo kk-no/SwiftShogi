@@ -140,6 +140,10 @@ private let stringToSpecialMoveType: [String: SpecialMoveType] = [
     "不戦敗": .loseByDefault,
 ]
 
+/// KI2形式の指し手欄に現れる終局・特殊な指し手の表記
+/// Shogi DB2などがこれらを指し手と同列に出力するため、現れた時点で指し手の読み込みを終了する。
+private let ignoredKI2MoveNames: Set<String> = Set(stringToSpecialMoveType.keys).union(["時間切れ"])
+
 /// 解析された行情報
 private struct Line {
     let type: LineType
@@ -198,11 +202,11 @@ public class KakinokiFormatter {
         (prefix: "^(先|下)手番", type: .blackTurn, removePrefix: false, isPosition: true),
         (prefix: "^(後|上)手番", type: .whiteTurn, removePrefix: false, isPosition: true),
         (prefix: "^ *[0-9]+ +", type: .move, removePrefix: false, isPosition: false),
-        (prefix: "^[ \\u{3000}]*[▲△▼▽☗☖]", type: .move2, removePrefix: false, isPosition: false),
-        (prefix: "^[ \\u{3000}]*変化[：:][ \\u{3000}]*", type: .branch, removePrefix: true, isPosition: false),
+        (prefix: "^[ \u{3000}]*[▲△▼▽☗☖]", type: .move2, removePrefix: false, isPosition: false),
+        (prefix: "^[ \u{3000}]*変化[：:][ \u{3000}]*", type: .branch, removePrefix: true, isPosition: false),
         (prefix: "^\\*", type: .comment, removePrefix: true, isPosition: false),
         (prefix: "^&", type: .bookmark, removePrefix: true, isPosition: false),
-        (prefix: "^まで、?([0-9]+手で)?", type: .endOfGame, removePrefix: true, isPosition: false),
+        (prefix: "^まで、?([0-9]+手で?)?", type: .endOfGame, removePrefix: true, isPosition: false),
     ]
 
     /// 行を解析します
@@ -485,22 +489,8 @@ public class KakinokiFormatter {
 
             from = .left(Square(file: file, rank: rank))
         } else {
-            // 方向指定形式などから移動元を特定
-            let attackers = record.position.listAttackersByPiece(to: to, piece: Piece(color: record.position.color, type: pieceType))
-
-            // 条件に合う移動可能な駒を絞り込む
-            let candidates = attackers.filter { _ in
-                // 指定された方向条件に一致する駒のみ選択
-                true
-            }
-
-            if candidates.count == 1 {
-                from = .left(candidates[0])
-            } else if candidates.isEmpty && record.position.hand(color: record.position.color).count(pieceType: pieceType) > 0 {
-                from = .right(pieceType)
-            } else {
-                return FormatError(message: "Cannot determine the source of the move")
-            }
+            // KIFの指し手の正規表現上、移動元は「打」または座標のいずれかしか取り得ない
+            return FormatError(message: "Invalid source position: \(fromStr)")
         }
 
         // 指し手を生成
@@ -825,6 +815,81 @@ public class KakinokiFormatter {
         isMoveSection = true
     }
 
+    /// 方向修飾子（右・左・直・上・引・寄）で移動元の候補を絞り込みます
+    /// - Parameters:
+    ///   - candidates: 移動元の候補
+    ///   - to: 移動先
+    ///   - color: 手番
+    ///   - pieceType: 駒の種類
+    ///   - horStr: 相対位置（右・左・直）
+    ///   - verStr: 動作（上・引・寄。「行」は「上」の異表記）
+    /// - Returns: 絞り込まれた移動元の候補
+    private static func filterMoveSourceCandidates(
+        _ candidates: [Square],
+        to: Square,
+        color: Color,
+        pieceType: PieceType,
+        horStr: String,
+        verStr: String
+    ) -> [Square] {
+        // 修飾子は指す側から見た方向を表すため、各候補の移動方向を後手なら反転して求めておく
+        let directedCandidates: [(square: Square, direction: Direction)] = candidates.compactMap { square in
+            guard var dir = square.directionTo(to) else {
+                return nil
+            }
+            if color == .white {
+                dir = dir.reversed
+            }
+            return (square, dir)
+        }
+
+        var filtered = directedCandidates.filter { _, dir in
+            let vDir = dir.verticalDirection
+            let hDir = dir.horizontalDirection
+
+            if verStr.contains("引"), vDir != .down {
+                return false
+            }
+            if verStr.contains("寄"), vDir != VDirection.none {
+                return false
+            }
+            if verStr.contains("上") || verStr.contains("行"), vDir != .up {
+                return false
+            }
+            if horStr.contains("直"), hDir != HDirection.none || vDir != .up {
+                return false
+            }
+
+            if pieceType == .horse || pieceType == .dragon {
+                // 馬・竜は直進する場合も「右」「左」で表記されるため、明らかに違うものだけを除外する
+                if horStr.contains("左"), hDir == .left {
+                    return false
+                }
+                if horStr.contains("右"), hDir == .right {
+                    return false
+                }
+            } else {
+                if horStr.contains("左"), hDir != .right {
+                    return false
+                }
+                if horStr.contains("右"), hDir != .left {
+                    return false
+                }
+            }
+
+            return true
+        }
+
+        if filtered.count == 2, horStr.contains("右") || horStr.contains("左"), pieceType == .horse || pieceType == .dragon {
+            // 馬・竜で「右」「左」だけでは1つに絞れなかった場合は直進するものを除外する
+            filtered = filtered.filter { _, dir in
+                dir.horizontalDirection != HDirection.none
+            }
+        }
+
+        return filtered.map { $0.square }
+    }
+
     /// KI2形式の指し手を解析します
     /// - Parameters:
     ///   - position: 局面
@@ -832,9 +897,9 @@ public class KakinokiFormatter {
     ///   - lastMove: 前の指し手
     /// - Returns: 指し手の配列または失敗
     public static func parseMoves(position: Position, text: String, lastMove: Move? = nil) -> Result<[Move], Error> {
-        let moveRegExp = "[▲△▼▽☗☖]?([１２３４５６７８９一二三四五六七八九1-9]{2}|同)(王|玉|飛|龍|竜|角|馬|金|銀|成銀|全|桂|成桂|圭|香|成香|杏|歩|と)(左|直|右|)(引|寄|上|)(成|不成|打|)(\\([1-9][1-9]\\)|)"
+        let moveRegExp = "^([１２３４５６７８９一二三四五六七八九1-9]{2}|同)(王|玉|飛|龍|竜|角|馬|金|銀|成銀|全|桂|成桂|圭|香|成香|杏|歩|と)(左|直|右|)(引|寄|上|行|)(成|不成|打|)(\\([1-9][1-9]\\)|)"
 
-        let clean = text.replacingOccurrences(of: "[\\s\\u{3000}]", with: "", options: .regularExpression)
+        let clean = text.replacingOccurrences(of: "[\\s\u{3000}]", with: "", options: .regularExpression)
         var moves: [Move] = []
 
         if clean.isEmpty {
@@ -846,33 +911,40 @@ public class KakinokiFormatter {
             return .failure(FormatError(message: "Failed to create regular expression"))
         }
 
-        let range = NSRange(location: 0, length: clean.utf16.count)
-        let matches = regex.matches(in: clean, options: [], range: range)
-
-        if matches.isEmpty {
-            return .failure(FormatError(message: "No valid moves found in: \(text)"))
-        }
-
         let p = position.clone()
+        var stopped = false
 
-        for match in matches {
-            guard match.numberOfRanges >= 7,
-                  let toStrRange = Range(match.range(at: 1), in: clean),
-                  let pieceTypeStrRange = Range(match.range(at: 2), in: clean),
-                  let horStrRange = Range(match.range(at: 3), in: clean),
-                  let verStrRange = Range(match.range(at: 4), in: clean),
-                  let promOrDropStrRange = Range(match.range(at: 5), in: clean),
-                  let fromStrRange = Range(match.range(at: 6), in: clean)
-            else {
-                return .failure(FormatError(message: "Invalid move format"))
+        let sections = clean.components(separatedBy: CharacterSet(charactersIn: "▲△▼▽☗☖"))
+
+        for section in sections {
+            if section.isEmpty {
+                continue
             }
 
-            let toStr = String(clean[toStrRange])
-            let pieceTypeStr = String(clean[pieceTypeStrRange])
-            let horStr = String(clean[horStrRange])
-            let verStr = String(clean[verStrRange])
-            let promOrDropStr = String(clean[promOrDropStrRange])
-            let fromStr = String(clean[fromStrRange])
+            if ignoredKI2MoveNames.contains(section) {
+                stopped = true
+                break
+            }
+
+            let sectionRange = NSRange(location: 0, length: section.utf16.count)
+            guard let match = regex.firstMatch(in: section, options: [], range: sectionRange),
+                  match.numberOfRanges >= 7,
+                  let toStrRange = Range(match.range(at: 1), in: section),
+                  let pieceTypeStrRange = Range(match.range(at: 2), in: section),
+                  let horStrRange = Range(match.range(at: 3), in: section),
+                  let verStrRange = Range(match.range(at: 4), in: section),
+                  let promOrDropStrRange = Range(match.range(at: 5), in: section),
+                  let fromStrRange = Range(match.range(at: 6), in: section)
+            else {
+                return .failure(FormatError(message: "Invalid move: \(section)"))
+            }
+
+            let toStr = String(section[toStrRange])
+            let pieceTypeStr = String(section[pieceTypeStrRange])
+            let horStr = String(section[horStrRange])
+            let verStr = String(section[verStrRange])
+            let promOrDropStr = String(section[promOrDropStrRange])
+            let fromStr = String(section[fromStrRange])
 
             // 移動先の解析
             let to: Square
@@ -917,24 +989,19 @@ public class KakinokiFormatter {
 
                 from = .left(Square(file: file, rank: rank))
             } else {
-                // 方向指定を元に移動元を特定
-                var candidates = p.listAttackersByPiece(to: to, piece: Piece(color: p.color, type: pieceType))
-
-                // 方向修飾子による絞り込み
-                if !horStr.isEmpty || !verStr.isEmpty {
-                    candidates = candidates.filter { _ in
-                        // TODO: 方向条件によるフィルタリングを実装
-                        // 実際にはもっと複雑な条件がある
-                        true
-                    }
-                }
+                // 方向修飾子を元に移動元を特定
+                let attackers = p.listAttackersByPiece(to: to, piece: Piece(color: p.color, type: pieceType))
+                let candidates = filterMoveSourceCandidates(
+                    attackers, to: to, color: p.color,
+                    pieceType: pieceType, horStr: horStr, verStr: verStr
+                )
 
                 if candidates.count == 1 {
                     from = .left(candidates[0])
                 } else if candidates.isEmpty && p.hand(color: p.color).count(pieceType: pieceType) > 0 {
                     from = .right(pieceType)
                 } else {
-                    return .failure(FormatError(message: "Cannot determine move source"))
+                    return .failure(FormatError(message: "Cannot determine move source: \(toStr)\(pieceTypeStr)\(horStr)\(verStr)"))
                 }
             }
 
@@ -954,6 +1021,11 @@ public class KakinokiFormatter {
             }
 
             moves.append(move)
+        }
+
+        // 終局表記でもなく指し手も読み取れなかった場合は破損した行とみなす
+        if moves.isEmpty && !stopped {
+            return .failure(FormatError(message: "No valid moves found in: \(text)"))
         }
 
         return .success(moves)
