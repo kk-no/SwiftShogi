@@ -121,6 +121,20 @@ class CSAFormatterTests: XCTestCase {
         XCTAssertTrue(csaString.contains("PI"), "Exported CSA should contain initial position")
     }
 
+    func testExportCSAMoveOrder() {
+        let record = Record(position: Position())
+        for usi in ["7g7f", "3c3d", "2g2f"] {
+            guard let move = record.position.createMoveByUSI(usi), record.append(move) else {
+                XCTFail("Failed to append move: \(usi)")
+                return
+            }
+        }
+
+        let csaString = CSAFormatter.exportCSA(record)
+
+        XCTAssertTrue(csaString.contains("+7776FU\n-3334FU\n+2726FU"), "unexpected output: \(csaString)")
+    }
+
     func testExportCSAWithCustomOptions() {
         let record = Record(position: Position())
         let options = CSAFormatter.CSAExportOptions(version: "V2.2", includeTime: false, includeComments: false)

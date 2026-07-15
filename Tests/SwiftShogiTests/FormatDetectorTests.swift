@@ -91,28 +91,16 @@ final class FormatDetectorTests: XCTestCase {
     // MARK: - KI2フォーマット検出テスト
     
     func testDetectKI2Format() {
-        // Based on implementation analysis: KI2 patterns are also matched by KIF patterns
-        // This means that KI2 will only be detected if it has MORE KI2-specific matches than KIF matches
-        // The reality is that most samples with ▲△☗☖ will be detected as KIF due to pattern overlap
-        // Let's test the actual behavior rather than expected behavior
-        
         let ki2Samples = [
             "▲７六歩 △３四歩",
             "☗７六歩 ☖３四歩 ☗２六歩",
+            "先手：テスト\n後手：テスト2\n▲７六歩 △３四歩 ▲２六歩\n▲２五歩 △３三角 ▲同角成",
         ]
-        
+
         for sample in ki2Samples {
             let detected = FormatDetector.detectRecordFormat(sample)
-            // Due to pattern overlap, these are actually detected as KIF
-            XCTAssertEqual(detected, .KIF, "Detected \(detected) for KI2-like sample: \(sample)")
+            XCTAssertEqual(detected, .KI2, "Detected \(detected) for KI2 sample: \(sample)")
         }
-        
-        // Test a pure KI2 sample that might actually be detected as KI2
-        // This would need to have enough KI2-specific symbols to outweigh KIF matches
-        let pureKI2 = "▲▲▲▲▲▲▲▲▲▲" // Multiple KI2 symbols without other text
-        let pureDetected = FormatDetector.detectRecordFormat(pureKI2)
-        // This should be KI2 since it has only KI2 patterns
-        XCTAssertTrue([.KI2, .KIF].contains(pureDetected))
     }
     
     // MARK: - CSAフォーマット検出テスト

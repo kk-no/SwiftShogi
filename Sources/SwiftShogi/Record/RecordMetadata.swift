@@ -90,16 +90,19 @@ public extension ImmutableRecordMetadata {
 }
 
 /// 棋譜メタデータ
+/// キーの一覧は設定した順序を保持します(エクスポート時にヘッダ行の順序が保たれるようにするため)。
 public class RecordMetadata: ImmutableRecordMetadata {
     private var standard: [RecordMetadataKey: String] = [:]
+    private var standardKeyOrder: [RecordMetadataKey] = []
     private var custom: [String: String] = [:]
+    private var customKeyOrder: [String] = []
 
     /// 初期化
     public init() {}
 
     /// 定義済みのメタデータのキーの一覧を取得します
     public var standardMetadataKeys: [RecordMetadataKey] {
-        return Array(standard.keys)
+        return standardKeyOrder
     }
 
     /// 定義済みのメタデータを取得します
@@ -115,15 +118,18 @@ public class RecordMetadata: ImmutableRecordMetadata {
     ///   - value: メタデータ値
     public func setStandardMetadata(_ key: RecordMetadataKey, value: String?) {
         if let value = value, !value.isEmpty {
+            if standard[key] == nil {
+                standardKeyOrder.append(key)
+            }
             standard[key] = value
-        } else {
-            standard.removeValue(forKey: key)
+        } else if standard.removeValue(forKey: key) != nil {
+            standardKeyOrder.removeAll { $0 == key }
         }
     }
 
     /// カスタムメタデータのキーの一覧を取得します
     public var customMetadataKeys: [String] {
-        return Array(custom.keys)
+        return customKeyOrder
     }
 
     /// カスタムメタデータを取得します
@@ -139,9 +145,12 @@ public class RecordMetadata: ImmutableRecordMetadata {
     ///   - value: メタデータ値
     public func setCustomMetadata(_ key: String, value: String?) {
         if let value = value, !value.isEmpty {
+            if custom[key] == nil {
+                customKeyOrder.append(key)
+            }
             custom[key] = value
-        } else {
-            custom.removeValue(forKey: key)
+        } else if custom.removeValue(forKey: key) != nil {
+            customKeyOrder.removeAll { $0 == key }
         }
     }
 }

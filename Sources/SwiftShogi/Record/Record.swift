@@ -84,43 +84,54 @@ public protocol ImmutableRecord {
     func resetAllBranchSelection()
 }
 
+/// 棋譜ツリーを先行順で走査するためのステップ
+private enum NodeTraversalStep {
+    /// ノードを訪問する
+    case visit(NodeImpl)
+
+    /// ノードの指し手を適用して次のノードへ進む
+    case descend(NodeImpl)
+
+    /// 指し手を戻す
+    case undo(Move)
+}
+
 // Sequence protocol support for Record
 extension Record: Sequence {
     public typealias Element = (node: ImmutableNode, position: ImmutablePosition)
 
     public func makeIterator() -> AnyIterator<Element> {
         let pos = _initialPosition.clone()
-        var stack: [(NodeImpl, Bool)] = [(_first, false)] // (node, visited)
+        var stack: [NodeTraversalStep] = [.visit(_first)]
 
         return AnyIterator {
-            while !stack.isEmpty {
-                let (node, visited) = stack.removeLast()
-
-                if !visited {
-                    // Mark for visit
-                    stack.append((node, true))
-
+            while let step = stack.popLast() {
+                switch step {
+                case let .visit(node):
+                    // 兄弟ノード(分岐)はこのノードの指し手を戻した局面で訪問する
                     if let branch = node.branchNode {
-                        stack.append((branch, false))
+                        stack.append(.visit(branch))
                     }
 
+                    // 指し手の適用は次の呼び出しまで遅延させ、
+                    // 返した局面がこのノードを指す直前の状態を保つようにする
+                    if node.nextNode != nil {
+                        stack.append(.descend(node))
+                    }
+
+                    return (node: node as ImmutableNode, position: pos as ImmutablePosition)
+
+                case let .descend(node):
                     if let next = node.nextNode {
                         if let move = node.move as? Move {
+                            stack.append(.undo(move))
                             pos.doMove(move, option: DoMoveOption(ignoreValidation: true))
                         }
-                        stack.append((next, false))
-                        continue
-                    }
-                } else {
-                    // Return the node and position
-                    let result = (node: node as ImmutableNode, position: pos as ImmutablePosition)
-
-                    // Restore position state when returning to parent
-                    if let move = node.move as? Move {
-                        pos.undoMove(move)
+                        stack.append(.visit(next))
                     }
 
-                    return result
+                case let .undo(move):
+                    pos.undoMove(move)
                 }
             }
             return nil
@@ -817,38 +828,12 @@ public class Record: ImmutableRecord {
         }
     }
 
-    /// 全てのノードを訪問します
+    /// 全てのノードを訪問します。
+    /// 本譜を先頭から辿り、分岐はその手を指す直前の局面に戻してから訪問します。
+    /// ハンドラに渡す局面はそのノードの指し手を指す直前の局面です。
     private func _forEach(_ handler: (ImmutableNode, ImmutablePosition) -> Void) {
-        let pos = _initialPosition.clone()
-        var stack: [(NodeImpl, Bool)] = [(_first, false)] // (ノード, 処理済みか)
-
-        while !stack.isEmpty {
-            let (node, visited) = stack.removeLast()
-
-            if !visited {
-                // まだ処理していない場合は子を追加してから自分を再追加
-                stack.append((node, true))
-
-                if let branch = node.branchNode {
-                    stack.append((branch, false))
-                }
-
-                if let next = node.nextNode {
-                    if let move = node.move as? Move {
-                        pos.doMove(move, option: DoMoveOption(ignoreValidation: true))
-                    }
-                    stack.append((next, false))
-                    continue
-                }
-            } else {
-                // 処理済みなら実行
-                handler(node, pos)
-
-                // 親に戻る前に状態を元に戻す
-                if let move = node.move as? Move {
-                    pos.undoMove(move)
-                }
-            }
+        for (node, position) in self {
+            handler(node, position)
         }
     }
 

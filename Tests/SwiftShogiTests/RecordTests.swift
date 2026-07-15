@@ -383,4 +383,31 @@ final class RecordTests: XCTestCase {
         record.goForward()
         XCTAssertEqual(record.current.ply, 1, "No forward moves should exist after branch deletion")
     }
+
+    // MARK: - メタデータ
+
+    func testMetadataKeysPreserveInsertionOrder() {
+        let metadata = RecordMetadata()
+        metadata.setStandardMetadata(.whiteName, value: "後手")
+        metadata.setStandardMetadata(.blackName, value: "先手")
+        metadata.setStandardMetadata(.tournament, value: "棋戦")
+        metadata.setStandardMetadata(.place, value: "場所")
+        metadata.setStandardMetadata(.strategy, value: "戦型")
+        metadata.setStandardMetadata(.note, value: "備考")
+
+        XCTAssertEqual(metadata.standardMetadataKeys, [.whiteName, .blackName, .tournament, .place, .strategy, .note])
+
+        // 既存キーの更新では順序を変えない
+        metadata.setStandardMetadata(.blackName, value: "先手2")
+        XCTAssertEqual(metadata.standardMetadataKeys, [.whiteName, .blackName, .tournament, .place, .strategy, .note])
+
+        // 削除したキーは一覧から消える
+        metadata.setStandardMetadata(.tournament, value: nil)
+        XCTAssertEqual(metadata.standardMetadataKeys, [.whiteName, .blackName, .place, .strategy, .note])
+
+        metadata.setCustomMetadata("ふ", value: "2")
+        metadata.setCustomMetadata("あ", value: "1")
+        metadata.setCustomMetadata("ん", value: "3")
+        XCTAssertEqual(metadata.customMetadataKeys, ["ふ", "あ", "ん"])
+    }
 }
